@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const db = require('../db/database');
+const User = require('../models/User');
+const CandidateProfile = require('../models/CandidateProfile');
+const Experience = require('../models/Experience');
+const Skill = require('../models/Skill');
+const Project = require('../models/Project');
+const Education = require('../models/Education');
+const Shortlist = require('../models/Shortlist');
 
 // Middleware: ensure recruiter role
 function requireRecruiter(req, res, next) {
@@ -11,63 +17,83 @@ function requireRecruiter(req, res, next) {
   next();
 }
 
-function getCandidateFull(userId) {
-  const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(userId);
-  const profile = db.prepare('SELECT * FROM candidate_profiles WHERE user_id = ?').get(userId);
-  const experiences = db.prepare('SELECT * FROM experiences WHERE user_id = ? ORDER BY sort_order').all(userId)
-    .map(e => ({ ...e, bullets: e.bullets ? JSON.parse(e.bullets) : [] }));
-  const skills = db.prepare('SELECT * FROM skills WHERE user_id = ?').all(userId);
-  const projects = db.prepare('SELECT * FROM projects WHERE user_id = ? ORDER BY sort_order').all(userId)
-    .map(p => ({ ...p, tech_stack: p.tech_stack ? JSON.parse(p.tech_stack) : [] }));
-  const education = db.prepare('SELECT * FROM education WHERE user_id = ? ORDER BY end_year DESC').all(userId);
-  return { user, profile: profile || {}, experiences, skills, projects, education };
+async function getCandidateFull(userId) {
+  const user = await User.findById(userId).select('_id name email');
+  const profile = await CandidateProfile.findOne({ user_id: userId }) || {};
+  const experiences = await Experience.find({ user_id: userId }).sort({ sort_order: 1 });
+  const skills = await Skill.find({ user_id: userId });
+  const projects = await Project.find({ user_id: userId }).sort({ sort_order: 1 });
+  const education = await Education.find({ user_id: userId }).sort({ end_year: -1 });
+  return { 
+    user: user ? { id: user._id, name: user.name, email: user.email } : null, 
+    profile, 
+    experiences, 
+    skills, 
+    projects, 
+    education 
+  };
 }
 
 // GET /api/recruiter/candidates
-router.get('/candidates', auth, requireRecruiter, (req, res) => {
+router.get('/candidates', auth, requireRecruiter, async (req, res) => {
   try {
     const { search = '', skill = '', sort = 'newest', page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    let query = `
-      SELECT DISTINCT u.id, u.name, u.email, cp.headline, cp.summary, cp.location,
-             cp.completion_percent, cp.is_submitted, cp.updated_at
-      FROM users u
-      LEFT JOIN candidate_profiles cp ON cp.user_id = u.id
-      WHERE u.role = 'candidate' AND cp.is_submitted = 1
-    `;
-    const params = [];
-
+    let profileQuery = { is_submitted: 1 };
+    
     if (search) {
-      query += ` AND (u.name LIKE ? OR cp.headline LIKE ? OR cp.summary LIKE ?)`;
-      const s = `%${search}%`;
-      params.push(s, s, s);
+      const searchRegex = new RegExp(search, 'i');
+      const matchingUsers = await User.find({ name: searchRegex, role: 'candidate' }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      profileQuery.$or = [
+        { headline: searchRegex },
+        { summary: searchRegex },
+        { user_id: { $in: userIds } }
+      ];
     }
-
+    
     if (skill) {
-      query += ` AND u.id IN (SELECT user_id FROM skills WHERE name LIKE ?)`;
-      params.push(`%${skill}%`);
+      const skillRegex = new RegExp(skill, 'i');
+      const matchingSkills = await Skill.find({ name: skillRegex }).select('user_id');
+      const skilledUserIds = matchingSkills.map(s => s.user_id);
+      profileQuery.user_id = { ...(profileQuery.user_id || {}), $in: skilledUserIds };
     }
 
-    if (sort === 'newest') query += ' ORDER BY cp.updated_at DESC';
-    else if (sort === 'completion') query += ' ORDER BY cp.completion_percent DESC';
-    else if (sort === 'name') query += ' ORDER BY u.name ASC';
+    let sortOption = { updated_at: -1 };
+    if (sort === 'completion') sortOption = { completion_percent: -1 };
 
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), offset);
+    const profiles = await CandidateProfile.find(profileQuery)
+      .sort(sortOption)
+      .skip(offset)
+      .limit(parseInt(limit))
+      .populate('user_id', 'name email');
 
-    const candidates = db.prepare(query).all(...params);
+    const total = await CandidateProfile.countDocuments(profileQuery);
 
-    // Attach top skills
-    const enriched = candidates.map(c => {
-      const skills = db.prepare('SELECT name, level, category FROM skills WHERE user_id = ? LIMIT 6').all(c.id);
-      const isShortlisted = db.prepare('SELECT id FROM shortlists WHERE recruiter_id = ? AND candidate_id = ?').get(req.user.id, c.id);
-      return { ...c, skills, is_shortlisted: !!isShortlisted };
-    });
+    const enriched = await Promise.all(profiles.map(async p => {
+      if (!p.user_id) return null;
+      const u = p.user_id;
+      const skills = await Skill.find({ user_id: u._id }).limit(6);
+      const isShortlisted = await Shortlist.findOne({ recruiter_id: req.user.id, candidate_id: u._id });
 
-    const total = db.prepare(`SELECT COUNT(DISTINCT u.id) as c FROM users u LEFT JOIN candidate_profiles cp ON cp.user_id = u.id WHERE u.role = 'candidate' AND cp.is_submitted = 1`).get().c;
+      return {
+        id: u._id,
+        name: u.name,
+        email: u.email,
+        headline: p.headline,
+        summary: p.summary,
+        location: p.location,
+        completion_percent: p.completion_percent,
+        is_submitted: p.is_submitted,
+        updated_at: p.updated_at,
+        skills,
+        is_shortlisted: !!isShortlisted
+      };
+    }));
 
-    res.json({ candidates: enriched, total, page: parseInt(page), limit: parseInt(limit) });
+    res.json({ candidates: enriched.filter(Boolean), total, page: parseInt(page), limit: parseInt(limit) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -75,10 +101,10 @@ router.get('/candidates', auth, requireRecruiter, (req, res) => {
 });
 
 // GET /api/recruiter/candidates/:id
-router.get('/candidates/:id', auth, requireRecruiter, (req, res) => {
+router.get('/candidates/:id', auth, requireRecruiter, async (req, res) => {
   try {
-    const full = getCandidateFull(req.params.id);
-    const isShortlisted = db.prepare('SELECT id, note, status FROM shortlists WHERE recruiter_id = ? AND candidate_id = ?').get(req.user.id, req.params.id);
+    const full = await getCandidateFull(req.params.id);
+    const isShortlisted = await Shortlist.findOne({ recruiter_id: req.user.id, candidate_id: req.params.id });
     res.json({ ...full, shortlist: isShortlisted || null });
   } catch (err) {
     console.error(err);
@@ -87,16 +113,15 @@ router.get('/candidates/:id', auth, requireRecruiter, (req, res) => {
 });
 
 // POST /api/recruiter/shortlist
-router.post('/shortlist', auth, requireRecruiter, (req, res) => {
+router.post('/shortlist', auth, requireRecruiter, async (req, res) => {
   try {
     const { candidate_id, note = '', status = 'shortlisted' } = req.body;
-    const existing = db.prepare('SELECT id FROM shortlists WHERE recruiter_id = ? AND candidate_id = ?').get(req.user.id, candidate_id);
+    const existing = await Shortlist.findOne({ recruiter_id: req.user.id, candidate_id });
     if (existing) {
-      // Toggle: remove if already shortlisted
-      db.prepare('DELETE FROM shortlists WHERE recruiter_id = ? AND candidate_id = ?').run(req.user.id, candidate_id);
+      await Shortlist.deleteOne({ _id: existing._id });
       return res.json({ success: true, action: 'removed' });
     }
-    db.prepare('INSERT INTO shortlists (recruiter_id, candidate_id, note, status) VALUES (?, ?, ?, ?)').run(req.user.id, candidate_id, note, status);
+    await Shortlist.create({ recruiter_id: req.user.id, candidate_id, note, status });
     res.json({ success: true, action: 'added' });
   } catch (err) {
     console.error(err);
@@ -105,24 +130,34 @@ router.post('/shortlist', auth, requireRecruiter, (req, res) => {
 });
 
 // GET /api/recruiter/shortlisted
-router.get('/shortlisted', auth, requireRecruiter, (req, res) => {
+router.get('/shortlisted', auth, requireRecruiter, async (req, res) => {
   try {
-    const shortlisted = db.prepare(`
-      SELECT u.id, u.name, u.email, cp.headline, cp.summary, cp.location,
-             cp.completion_percent, s.note, s.status, s.created_at as shortlisted_at
-      FROM shortlists s
-      JOIN users u ON u.id = s.candidate_id
-      LEFT JOIN candidate_profiles cp ON cp.user_id = u.id
-      WHERE s.recruiter_id = ?
-      ORDER BY s.created_at DESC
-    `).all(req.user.id);
+    const shortlists = await Shortlist.find({ recruiter_id: req.user.id })
+      .sort({ created_at: -1 })
+      .populate('candidate_id', 'name email');
 
-    const enriched = shortlisted.map(c => {
-      const skills = db.prepare('SELECT name, level, category FROM skills WHERE user_id = ? LIMIT 6').all(c.id);
-      return { ...c, skills };
-    });
+    const enriched = await Promise.all(shortlists.map(async s => {
+      if (!s.candidate_id) return null;
+      const u = s.candidate_id;
+      const cp = await CandidateProfile.findOne({ user_id: u._id });
+      const skills = await Skill.find({ user_id: u._id }).limit(6);
+      
+      return {
+        id: u._id,
+        name: u.name,
+        email: u.email,
+        headline: cp ? cp.headline : '',
+        summary: cp ? cp.summary : '',
+        location: cp ? cp.location : '',
+        completion_percent: cp ? cp.completion_percent : 0,
+        note: s.note,
+        status: s.status,
+        shortlisted_at: s.created_at,
+        skills
+      };
+    }));
 
-    res.json({ candidates: enriched });
+    res.json({ candidates: enriched.filter(Boolean) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -130,10 +165,10 @@ router.get('/shortlisted', auth, requireRecruiter, (req, res) => {
 });
 
 // GET /api/recruiter/compare?ids=1,2,3
-router.get('/compare', auth, requireRecruiter, (req, res) => {
+router.get('/compare', auth, requireRecruiter, async (req, res) => {
   try {
     const ids = (req.query.ids || '').split(',').filter(Boolean).slice(0, 4);
-    const profiles = ids.map(id => getCandidateFull(id));
+    const profiles = await Promise.all(ids.map(id => getCandidateFull(id)));
     res.json({ profiles });
   } catch (err) {
     console.error(err);

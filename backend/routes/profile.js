@@ -1,11 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const db = require('../db/database');
+const CandidateProfile = require('../models/CandidateProfile');
+const Experience = require('../models/Experience');
+const Skill = require('../models/Skill');
+const Project = require('../models/Project');
+const Education = require('../models/Education');
+const User = require('../models/User');
 
 // Calculate completion percent based on filled sections
-function calcCompletion(userId) {
-  const profile = db.prepare('SELECT * FROM candidate_profiles WHERE user_id = ?').get(userId);
+async function calcCompletion(userId) {
+  const profile = await CandidateProfile.findOne({ user_id: userId });
   if (!profile) return 0;
 
   let score = 0;
@@ -15,48 +20,40 @@ function calcCompletion(userId) {
   const filledBasic = basicFields.filter(f => profile[f] && profile[f].trim()).length;
   score += Math.round((filledBasic / basicFields.length) * weights.basic);
 
-  const expCount = db.prepare('SELECT COUNT(*) as c FROM experiences WHERE user_id = ?').get(userId).c;
+  const expCount = await Experience.countDocuments({ user_id: userId });
   if (expCount > 0) score += weights.experience;
 
-  const skillCount = db.prepare('SELECT COUNT(*) as c FROM skills WHERE user_id = ?').get(userId).c;
+  const skillCount = await Skill.countDocuments({ user_id: userId });
   if (skillCount >= 3) score += weights.skills;
   else if (skillCount > 0) score += Math.round((skillCount / 3) * weights.skills);
 
-  const projCount = db.prepare('SELECT COUNT(*) as c FROM projects WHERE user_id = ?').get(userId).c;
+  const projCount = await Project.countDocuments({ user_id: userId });
   if (projCount > 0) score += weights.projects;
 
-  const eduCount = db.prepare('SELECT COUNT(*) as c FROM education WHERE user_id = ?').get(userId).c;
+  const eduCount = await Education.countDocuments({ user_id: userId });
   if (eduCount > 0) score += weights.education;
 
   return Math.min(score, 100);
 }
 
 // GET /api/profile — get own full profile
-router.get('/', auth, (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
-    const profile = db.prepare('SELECT * FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
-    const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(req.user.id);
-    const experiences = db.prepare('SELECT * FROM experiences WHERE user_id = ? ORDER BY sort_order, id DESC').all(req.user.id);
-    const skills = db.prepare('SELECT * FROM skills WHERE user_id = ?').all(req.user.id);
-    const projects = db.prepare('SELECT * FROM projects WHERE user_id = ? ORDER BY sort_order, id DESC').all(req.user.id);
-    const education = db.prepare('SELECT * FROM education WHERE user_id = ? ORDER BY end_year DESC').all(req.user.id);
+    const profile = await CandidateProfile.findOne({ user_id: req.user.id }) || {};
+    const user = await User.findById(req.user.id).select('_id name email');
+    const experiences = await Experience.find({ user_id: req.user.id }).sort({ sort_order: 1, _id: -1 });
+    const skills = await Skill.find({ user_id: req.user.id });
+    const projects = await Project.find({ user_id: req.user.id }).sort({ sort_order: 1, _id: -1 });
+    const education = await Education.find({ user_id: req.user.id }).sort({ end_year: -1 });
 
-    // Parse JSON fields
-    const parsedExperiences = experiences.map(e => ({
-      ...e,
-      bullets: e.bullets ? JSON.parse(e.bullets) : []
-    }));
-    const parsedProjects = projects.map(p => ({
-      ...p,
-      tech_stack: p.tech_stack ? JSON.parse(p.tech_stack) : []
-    }));
+    const normalizedUser = user ? { id: user._id, name: user.name, email: user.email } : null;
 
     res.json({
-      user,
-      profile: profile || {},
-      experiences: parsedExperiences,
+      user: normalizedUser,
+      profile,
+      experiences,
       skills,
-      projects: parsedProjects,
+      projects,
       education
     });
   } catch (err) {
@@ -66,30 +63,22 @@ router.get('/', auth, (req, res) => {
 });
 
 // PUT /api/profile/basic
-router.put('/basic', auth, (req, res) => {
+router.put('/basic', auth, async (req, res) => {
   try {
     const { headline, summary, location, phone, linkedin, github, portfolio, availability, name } = req.body;
 
-    // Update user name
     if (name) {
-      db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, req.user.id);
+      await User.findByIdAndUpdate(req.user.id, { name });
     }
 
-    const existing = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
-    if (existing) {
-      db.prepare(`
-        UPDATE candidate_profiles SET headline=?, summary=?, location=?, phone=?, linkedin=?, github=?, portfolio=?, availability=?, updated_at=CURRENT_TIMESTAMP
-        WHERE user_id=?
-      `).run(headline, summary, location, phone, linkedin, github, portfolio, availability, req.user.id);
-    } else {
-      db.prepare(`
-        INSERT INTO candidate_profiles (user_id, headline, summary, location, phone, linkedin, github, portfolio, availability)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(req.user.id, headline, summary, location, phone, linkedin, github, portfolio, availability);
-    }
+    await CandidateProfile.findOneAndUpdate(
+      { user_id: req.user.id },
+      { headline, summary, location, phone, linkedin, github, portfolio, availability, updated_at: Date.now() },
+      { upsert: true, new: true }
+    );
 
-    const completion = calcCompletion(req.user.id);
-    db.prepare('UPDATE candidate_profiles SET completion_percent = ? WHERE user_id = ?').run(completion, req.user.id);
+    const completion = await calcCompletion(req.user.id);
+    await CandidateProfile.findOneAndUpdate({ user_id: req.user.id }, { completion_percent: completion });
 
     res.json({ success: true, completion });
   } catch (err) {
@@ -99,19 +88,29 @@ router.put('/basic', auth, (req, res) => {
 });
 
 // PUT /api/profile/experience
-router.put('/experience', auth, (req, res) => {
+router.put('/experience', auth, async (req, res) => {
   try {
     const { experiences } = req.body;
-    db.prepare('DELETE FROM experiences WHERE user_id = ?').run(req.user.id);
-    const stmt = db.prepare(`
-      INSERT INTO experiences (user_id, job_title, company, location, start_date, end_date, is_current, description, bullets, sort_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    experiences.forEach((e, i) => {
-      stmt.run(req.user.id, e.job_title, e.company, e.location, e.start_date, e.end_date || null, e.is_current ? 1 : 0, e.description, JSON.stringify(e.bullets || []), i);
-    });
-    const completion = calcCompletion(req.user.id);
-    db.prepare('UPDATE candidate_profiles SET completion_percent = ? WHERE user_id = ?').run(completion, req.user.id);
+    await Experience.deleteMany({ user_id: req.user.id });
+    
+    if (experiences && experiences.length > 0) {
+      const docs = experiences.map((e, i) => ({
+        user_id: req.user.id,
+        job_title: e.job_title,
+        company: e.company,
+        location: e.location,
+        start_date: e.start_date,
+        end_date: e.end_date || null,
+        is_current: e.is_current ? 1 : 0,
+        description: e.description,
+        bullets: e.bullets || [],
+        sort_order: i
+      }));
+      await Experience.insertMany(docs);
+    }
+
+    const completion = await calcCompletion(req.user.id);
+    await CandidateProfile.findOneAndUpdate({ user_id: req.user.id }, { completion_percent: completion });
     res.json({ success: true, completion });
   } catch (err) {
     console.error(err);
@@ -120,14 +119,23 @@ router.put('/experience', auth, (req, res) => {
 });
 
 // PUT /api/profile/skills
-router.put('/skills', auth, (req, res) => {
+router.put('/skills', auth, async (req, res) => {
   try {
     const { skills } = req.body;
-    db.prepare('DELETE FROM skills WHERE user_id = ?').run(req.user.id);
-    const stmt = db.prepare('INSERT INTO skills (user_id, name, level, category) VALUES (?, ?, ?, ?)');
-    skills.forEach(s => stmt.run(req.user.id, s.name, s.level || 'Intermediate', s.category || 'Technical'));
-    const completion = calcCompletion(req.user.id);
-    db.prepare('UPDATE candidate_profiles SET completion_percent = ? WHERE user_id = ?').run(completion, req.user.id);
+    await Skill.deleteMany({ user_id: req.user.id });
+    
+    if (skills && skills.length > 0) {
+      const docs = skills.map((s) => ({
+        user_id: req.user.id,
+        name: s.name,
+        level: s.level || 'Intermediate',
+        category: s.category || 'Technical'
+      }));
+      await Skill.insertMany(docs);
+    }
+
+    const completion = await calcCompletion(req.user.id);
+    await CandidateProfile.findOneAndUpdate({ user_id: req.user.id }, { completion_percent: completion });
     res.json({ success: true, completion });
   } catch (err) {
     console.error(err);
@@ -136,17 +144,26 @@ router.put('/skills', auth, (req, res) => {
 });
 
 // PUT /api/profile/projects
-router.put('/projects', auth, (req, res) => {
+router.put('/projects', auth, async (req, res) => {
   try {
     const { projects } = req.body;
-    db.prepare('DELETE FROM projects WHERE user_id = ?').run(req.user.id);
-    const stmt = db.prepare(`
-      INSERT INTO projects (user_id, title, description, tech_stack, live_url, github_url, sort_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    projects.forEach((p, i) => stmt.run(req.user.id, p.title, p.description, JSON.stringify(p.tech_stack || []), p.live_url, p.github_url, i));
-    const completion = calcCompletion(req.user.id);
-    db.prepare('UPDATE candidate_profiles SET completion_percent = ? WHERE user_id = ?').run(completion, req.user.id);
+    await Project.deleteMany({ user_id: req.user.id });
+    
+    if (projects && projects.length > 0) {
+      const docs = projects.map((p, i) => ({
+        user_id: req.user.id,
+        title: p.title,
+        description: p.description,
+        tech_stack: p.tech_stack || [],
+        live_url: p.live_url,
+        github_url: p.github_url,
+        sort_order: i
+      }));
+      await Project.insertMany(docs);
+    }
+
+    const completion = await calcCompletion(req.user.id);
+    await CandidateProfile.findOneAndUpdate({ user_id: req.user.id }, { completion_percent: completion });
     res.json({ success: true, completion });
   } catch (err) {
     console.error(err);
@@ -155,17 +172,26 @@ router.put('/projects', auth, (req, res) => {
 });
 
 // PUT /api/profile/education
-router.put('/education', auth, (req, res) => {
+router.put('/education', auth, async (req, res) => {
   try {
     const { education } = req.body;
-    db.prepare('DELETE FROM education WHERE user_id = ?').run(req.user.id);
-    const stmt = db.prepare(`
-      INSERT INTO education (user_id, degree, field_of_study, institution, start_year, end_year, grade)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    education.forEach(e => stmt.run(req.user.id, e.degree, e.field_of_study, e.institution, e.start_year, e.end_year, e.grade));
-    const completion = calcCompletion(req.user.id);
-    db.prepare('UPDATE candidate_profiles SET completion_percent = ? WHERE user_id = ?').run(completion, req.user.id);
+    await Education.deleteMany({ user_id: req.user.id });
+    
+    if (education && education.length > 0) {
+      const docs = education.map((e) => ({
+        user_id: req.user.id,
+        degree: e.degree,
+        field_of_study: e.field_of_study,
+        institution: e.institution,
+        start_year: e.start_year,
+        end_year: e.end_year,
+        grade: e.grade
+      }));
+      await Education.insertMany(docs);
+    }
+
+    const completion = await calcCompletion(req.user.id);
+    await CandidateProfile.findOneAndUpdate({ user_id: req.user.id }, { completion_percent: completion });
     res.json({ success: true, completion });
   } catch (err) {
     console.error(err);
@@ -174,9 +200,9 @@ router.put('/education', auth, (req, res) => {
 });
 
 // POST /api/profile/submit
-router.post('/submit', auth, (req, res) => {
+router.post('/submit', auth, async (req, res) => {
   try {
-    db.prepare('UPDATE candidate_profiles SET is_submitted = 1, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(req.user.id);
+    await CandidateProfile.findOneAndUpdate({ user_id: req.user.id }, { is_submitted: 1, updated_at: Date.now() });
     res.json({ success: true, message: 'Profile submitted successfully!' });
   } catch (err) {
     console.error(err);
