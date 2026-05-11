@@ -4,6 +4,10 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const CandidateProfile = require('../models/CandidateProfile');
+const validator = require('validator');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ai_recruitment_secret';
 
@@ -13,6 +17,9 @@ router.post('/register', async (req, res) => {
     const { name, email, password, role = 'candidate' } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email and password are required' });
+    }
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
     }
     if (!['candidate', 'recruiter'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
@@ -45,6 +52,9 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
+    }
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
     }
 
     const user = await User.findOne({ email });
@@ -84,3 +94,65 @@ router.get('/me', require('../middleware/auth'), async (req, res) => {
 });
 
 module.exports = router;
+
+// POST /api/auth/google
+router.post('/google', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ error: 'Token is required' });
+
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+
+    let user = await User.findOne({ email });
+    if (user) {
+      if (!user.googleId) {
+        user.googleId = googleId;
+        await user.save();
+      }
+      const token = jwt.sign({ id: user._id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ token, user: { id: user._id, email: user.email, role: user.role, name: user.name } });
+    }
+
+    // User not found, needs role
+    res.status(202).json({ requires_role: true, email, name, googleId });
+  } catch (err) {
+    console.error('Google Auth error:', err);
+    res.status(401).json({ error: 'Invalid Google token' });
+  }
+});
+
+// POST /api/auth/google/register
+router.post('/google/register', async (req, res) => {
+  try {
+    const { idToken, role } = req.body;
+    if (!idToken || !role) return res.status(400).json({ error: 'Token and role are required' });
+    if (!['candidate', 'recruiter'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+
+    let user = await User.findOne({ email });
+    if (user) return res.status(409).json({ error: 'User already exists' });
+
+    user = await User.create({ email, name, role, googleId });
+
+    if (role === 'candidate') {
+      await CandidateProfile.create({ user_id: user._id, completion_percent: 0 });
+    }
+
+    const token = jwt.sign({ id: user._id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ token, user: { id: user._id, email: user.email, role: user.role, name: user.name } });
+  } catch (err) {
+    console.error('Google Auth Register error:', err);
+    res.status(401).json({ error: 'Invalid Google token' });
+  }
+});
