@@ -6,7 +6,7 @@ dns.setDefaultResultOrder('ipv4first');
 
 const sendEmail = async (options) => {
   // --- DEV MODE: No credentials at all ---
-  if (!process.env.SMTP_USER && !process.env.RESEND_API_KEY) {
+  if (!process.env.SMTP_USER && !process.env.BREVO_API_KEY && !process.env.RESEND_API_KEY) {
     console.warn('\n======================================================');
     console.warn('⚠️ No email credentials found in .env');
     console.warn('Simulating email delivery. OTP will be printed below:');
@@ -17,7 +17,36 @@ const sendEmail = async (options) => {
     return;
   }
 
-  // --- PRODUCTION: Use Resend HTTP API (works on Railway/Vercel/Render) ---
+  // --- PRODUCTION: Use Brevo HTTP API (works on Railway/Vercel/Render) ---
+  if (process.env.BREVO_API_KEY) {
+    console.log(`📧 Sending email via Brevo to ${options.email}...`);
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || 'noreply@airecruitment.com';
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: 'AI Recruitment', email: senderEmail },
+        to: [{ email: options.email }],
+        subject: options.subject,
+        textContent: options.message,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error('❌ Brevo API error:', data);
+      throw new Error(data.message || 'Failed to send email via Brevo');
+    }
+    console.log(`✅ Email sent via Brevo: messageId=${data.messageId}`);
+    return;
+  }
+
+  // --- ALTERNATIVE: Use Resend HTTP API ---
   if (process.env.RESEND_API_KEY) {
     console.log(`📧 Sending email via Resend to ${options.email}...`);
     const response = await fetch('https://api.resend.com/emails', {
