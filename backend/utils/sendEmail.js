@@ -1,33 +1,14 @@
 const nodemailer = require('nodemailer');
 const dns = require('dns');
-const { lookup } = require('dns/promises');
 
-// Force Node.js to resolve IPv4 addresses first (Railway has no IPv6 outbound)
+// Force IPv4 for local SMTP usage
 dns.setDefaultResultOrder('ipv4first');
 
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    connectionTimeout: 15000,
-    socketTimeout: 15000,
-    family: 4,
-    // Custom DNS lookup to guarantee IPv4
-    dnsLookup: (hostname, options, callback) => {
-      dns.lookup(hostname, { family: 4 }, callback);
-    },
-  });
-};
-
 const sendEmail = async (options) => {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  // --- DEV MODE: No credentials at all ---
+  if (!process.env.SMTP_USER && !process.env.RESEND_API_KEY) {
     console.warn('\n======================================================');
-    console.warn('⚠️ SMTP Credentials not found in .env');
+    console.warn('⚠️ No email credentials found in .env');
     console.warn('Simulating email delivery. OTP will be printed below:');
     console.warn(`To: ${options.email}`);
     console.warn(`Subject: ${options.subject}`);
@@ -36,18 +17,54 @@ const sendEmail = async (options) => {
     return;
   }
 
-  const mailOptions = {
+  // --- PRODUCTION: Use Resend HTTP API (works on Railway/Vercel/Render) ---
+  if (process.env.RESEND_API_KEY) {
+    console.log(`📧 Sending email via Resend to ${options.email}...`);
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM || 'AI Recruitment <onboarding@resend.dev>',
+        to: [options.email],
+        subject: options.subject,
+        text: options.message,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error('❌ Resend API error:', data);
+      throw new Error(data.message || 'Failed to send email via Resend');
+    }
+    console.log(`✅ Email sent via Resend: ${data.id}`);
+    return;
+  }
+
+  // --- LOCAL FALLBACK: Use Gmail SMTP (only works locally, not on cloud hosts) ---
+  console.log(`📧 Sending email via SMTP to ${options.email}...`);
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    connectionTimeout: 10000,
+    socketTimeout: 10000,
+    family: 4,
+  });
+
+  const info = await transporter.sendMail({
     from: `"AI Recruitment" <${process.env.SMTP_USER}>`,
     to: options.email,
     subject: options.subject,
     text: options.message,
-    html: options.html,
-  };
-
-  console.log(`📧 Sending email to ${options.email}...`);
-  const transporter = createTransporter();
-  const info = await transporter.sendMail(mailOptions);
-  console.log(`✅ Email sent successfully: ${info.messageId}`);
+  });
+  console.log(`✅ Email sent via SMTP: ${info.messageId}`);
 };
 
 module.exports = sendEmail;
