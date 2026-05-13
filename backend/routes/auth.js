@@ -50,7 +50,9 @@ router.post('/register', async (req, res) => {
       });
     } catch (emailError) {
       console.error('Failed to send OTP email:', emailError);
-      // Even if email fails, we tell frontend we require OTP (it might be logged to console in dev)
+      // Delete the user so they can try registering again after fixing the email issue
+      await User.findByIdAndDelete(user._id);
+      return res.status(500).json({ error: 'Email delivery failed: ' + emailError.message });
     }
 
     res.status(201).json({ requires_otp: true, email: user.email });
@@ -97,6 +99,7 @@ router.post('/login', async (req, res) => {
         });
       } catch (err) {
         console.error('Failed to send OTP email:', err);
+        return res.status(500).json({ error: 'Email delivery failed: ' + err.message });
       }
 
       return res.status(403).json({ requires_otp: true, email: user.email, error: 'Please verify your email to login' });
