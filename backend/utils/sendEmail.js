@@ -2,14 +2,15 @@ const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // use SSL
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-  connectionTimeout: 10000, // 10 seconds timeout instead of hanging
+  connectionTimeout: 10000,
   socketTimeout: 10000,
+  family: 4, // Force IPv4 — Railway blocks IPv6 to Gmail SMTP
 });
 
 const sendEmail = async (options) => {
