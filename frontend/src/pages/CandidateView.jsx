@@ -3,8 +3,22 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import api from '../utils/api'
 import Navbar from '../components/Navbar'
 import { ToastContainer } from '../components/Toast'
+import { motion } from 'framer-motion'
 
 const levelColor = { Beginner: '#FDCB6E', Intermediate: '#6C63FF', Advanced: '#00D4AA' }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } }
+}
 
 export default function CandidateView() {
   const { id } = useParams()
@@ -44,18 +58,26 @@ export default function CandidateView() {
   skills.forEach(s => { if (!skillsByCategory[s.category]) skillsByCategory[s.category] = []; skillsByCategory[s.category].push(s) })
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <Navbar />
       <ToastContainer />
 
-      <div style={{ maxWidth: 840, margin: '0 auto', padding: '90px 24px 60px' }}>
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        style={{ maxWidth: 840, margin: '0 auto', padding: '90px 24px 60px' }}>
         {/* Breadcrumb */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+        <motion.div variants={itemVariants} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           <Link to="/recruiter/dashboard" style={{ color: 'var(--primary-light)' }}>← Back to Dashboard</Link>
-        </div>
+        </motion.div>
 
         {/* Profile Header */}
-        <div className="card card-elevated" style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.08), rgba(0,212,170,0.04))', marginBottom: 24 }}>
+        <motion.div variants={itemVariants} className="card card-elevated" style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.08), rgba(0,212,170,0.04))', marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
             <div className="avatar avatar-xl" style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4AA)', color: 'white', flexShrink: 0, fontSize: '2rem' }}>{initials}</div>
             <div style={{ flex: 1, minWidth: 200 }}>
@@ -79,58 +101,66 @@ export default function CandidateView() {
 
             {/* Shortlist actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, minWidth: 140 }}>
-              <button className={`btn ${isShortlisted ? 'btn-secondary' : 'btn-accent'}`} onClick={() => setShowNote(!showNote)} disabled={shortlisting}>
+              <motion.button 
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                className={`btn ${isShortlisted ? 'btn-secondary' : 'btn-accent'}`} onClick={() => setShowNote(!showNote)} disabled={shortlisting}>
                 {isShortlisted ? '⭐ Shortlisted' : '☆ Shortlist'}
-              </button>
+              </motion.button>
               {showNote && (
-                <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12 }}>
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12 }}>
                   <textarea className="form-textarea" value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note..." rows={2} style={{ marginBottom: 8, fontSize: '0.85rem' }} />
-                  <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem' }} onClick={handleShortlist} disabled={shortlisting}>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center', fontSize: '0.82rem' }} onClick={handleShortlist} disabled={shortlisting}>
                     {isShortlisted ? 'Remove' : 'Confirm'}
-                  </button>
-                </div>
+                  </motion.button>
+                </motion.div>
               )}
               {isShortlisted && data.shortlist?.note && (
-                <div style={{ background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: 'var(--radius-sm)', padding: 10, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                <motion.div 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  style={{ background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: 'var(--radius-sm)', padding: 10, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   📝 {data.shortlist.note}
-                </div>
+                </motion.div>
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Summary */}
         {p.summary && (
-          <div className="card" style={{ marginBottom: 20 }}>
+          <motion.div variants={itemVariants} className="card" style={{ marginBottom: 20 }}>
             <h2 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>About</h2>
             <p style={{ color: 'var(--text)', lineHeight: 1.8 }}>{p.summary}</p>
-          </div>
+          </motion.div>
         )}
 
         {/* Skills */}
         {skills.length > 0 && (
-          <div className="card" style={{ marginBottom: 20 }}>
+          <motion.div variants={itemVariants} className="card" style={{ marginBottom: 20 }}>
             <h2 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Skills ({skills.length})</h2>
             {Object.entries(skillsByCategory).map(([cat, catSkills]) => (
               <div key={cat} style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>{cat}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {catSkills.map((s, i) => (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 100, background: 'var(--bg-input)', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                    <motion.span 
+                      whileHover={{ scale: 1.05, borderColor: 'var(--primary)' }}
+                      key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 100, background: 'var(--bg-input)', border: '1px solid var(--border)', fontSize: '0.85rem', cursor: 'default', transition: 'border-color 0.2s' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: levelColor[s.level] || '#999' }} />
                       {s.name}
                       <span style={{ color: levelColor[s.level], fontSize: '0.72rem', fontWeight: 700 }}>{s.level}</span>
-                    </span>
+                    </motion.span>
                   ))}
                 </div>
               </div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* Experience */}
         {experiences.length > 0 && (
-          <div className="card" style={{ marginBottom: 20 }}>
+          <motion.div variants={itemVariants} className="card" style={{ marginBottom: 20 }}>
             <h2 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Experience</h2>
             {experiences.map((exp, i) => (
               <div key={i} style={{ paddingLeft: 18, borderLeft: '2px solid var(--primary)', marginBottom: 20, position: 'relative' }}>
@@ -153,16 +183,16 @@ export default function CandidateView() {
                 )}
               </div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* Projects */}
         {projects.length > 0 && (
-          <div className="card" style={{ marginBottom: 20 }}>
+          <motion.div variants={itemVariants} className="card" style={{ marginBottom: 20 }}>
             <h2 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Projects</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
               {projects.map((proj, i) => (
-                <div key={i} style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius)', padding: 18, border: '1px solid var(--border)' }}>
+                <motion.div whileHover={{ y: -5, borderColor: 'var(--primary)' }} key={i} style={{ background: 'var(--bg-input)', borderRadius: 'var(--radius)', padding: 18, border: '1px solid var(--border)', transition: 'border-color 0.2s' }}>
                   <h3 style={{ fontSize: '0.97rem', marginBottom: 8 }}>{proj.title}</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: 10 }}>{proj.description}</p>
                   {proj.tech_stack?.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>{proj.tech_stack.map((t, j) => <span key={j} className="badge badge-muted" style={{ fontSize: '0.72rem' }}>{t}</span>)}</div>}
@@ -170,15 +200,15 @@ export default function CandidateView() {
                     {proj.live_url && <a href={`https://${proj.live_url}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem' }}>🔗 Live</a>}
                     {proj.github_url && <a href={`https://${proj.github_url}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem' }}>⚙ GitHub</a>}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Education */}
         {education.length > 0 && (
-          <div className="card">
+          <motion.div variants={itemVariants} className="card">
             <h2 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Education</h2>
             {education.map((edu, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
@@ -192,9 +222,9 @@ export default function CandidateView() {
                 </div>
               </div>
             ))}
-          </div>
+          </motion.div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

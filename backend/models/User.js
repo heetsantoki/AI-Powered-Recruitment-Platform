@@ -13,6 +13,9 @@ const userSchema = new mongoose.Schema({
   googleId: { type: String, required: false },
   role: { type: String, required: true, default: 'candidate', enum: ['candidate', 'recruiter'] },
   name: { type: String, trim: true },
+  is_verified: { type: Boolean, default: false },
+  otp: { type: String, required: false },
+  otp_expires: { type: Date, required: false },
   created_at: { type: Date, default: Date.now }
 });
 

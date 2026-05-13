@@ -31,15 +31,29 @@ router.post('/register', async (req, res) => {
     }
 
     const hash = bcrypt.hashSync(password, 10);
-    const user = await User.create({ email, password: hash, role, name });
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp_expires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+    const user = await User.create({ email, password: hash, role, name, is_verified: false, otp, otp_expires });
 
     // Create empty profile for candidates
     if (role === 'candidate') {
       await CandidateProfile.create({ user_id: user._id, completion_percent: 0 });
     }
 
-    const token = jwt.sign({ id: user._id, email, role, name }, JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: user._id, email, role, name } });
+    try {
+      const sendEmail = require('../utils/sendEmail');
+      await sendEmail({
+        email: user.email,
+        subject: 'Verify your AI Recruitment account',
+        message: `Your verification code is: ${otp}\n\nIt expires in 10 minutes.`,
+      });
+    } catch (emailError) {
+      console.error('Failed to send OTP email:', emailError);
+      // Even if email fails, we tell frontend we require OTP (it might be logged to console in dev)
+    }
+
+    res.status(201).json({ requires_otp: true, email: user.email });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -67,6 +81,27 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    if (user.is_verified === false) {
+      // User hasn't verified OTP yet. Generate new OTP and send it.
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      user.otp = otp;
+      user.otp_expires = new Date(Date.now() + 10 * 60 * 1000);
+      await user.save();
+
+      try {
+        const sendEmail = require('../utils/sendEmail');
+        await sendEmail({
+          email: user.email,
+          subject: 'Verify your AI Recruitment account',
+          message: `Your verification code is: ${otp}\n\nIt expires in 10 minutes.`,
+        });
+      } catch (err) {
+        console.error('Failed to send OTP email:', err);
+      }
+
+      return res.status(403).json({ requires_otp: true, email: user.email, error: 'Please verify your email to login' });
+    }
+
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role, name: user.name },
       JWT_SECRET,
@@ -83,6 +118,52 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// POST /api/auth/verify-otp
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and OTP required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.is_verified) {
+      return res.status(400).json({ error: 'User already verified' });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(401).json({ error: 'Invalid OTP' });
+    }
+
+    if (new Date() > user.otp_expires) {
+      return res.status(401).json({ error: 'OTP has expired. Please log in again to receive a new one.' });
+    }
+
+    user.is_verified = true;
+    user.otp = undefined;
+    user.otp_expires = undefined;
+    await user.save();
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role, name: user.name },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token,
+      user: { id: user._id, email: user.email, role: user.role, name: user.name }
+    });
+  } catch (err) {
+    console.error('Verify OTP error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // GET /api/auth/me
 router.get('/me', require('../middleware/auth'), async (req, res) => {
   try {
@@ -92,8 +173,6 @@ router.get('/me', require('../middleware/auth'), async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-
-module.exports = router;
 
 // POST /api/auth/google
 router.post('/google', async (req, res) => {
@@ -112,6 +191,7 @@ router.post('/google', async (req, res) => {
     if (user) {
       if (!user.googleId) {
         user.googleId = googleId;
+        user.is_verified = true;
         await user.save();
       }
       const token = jwt.sign({ id: user._id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
@@ -143,7 +223,7 @@ router.post('/google/register', async (req, res) => {
     let user = await User.findOne({ email });
     if (user) return res.status(409).json({ error: 'User already exists' });
 
-    user = await User.create({ email, name, role, googleId });
+    user = await User.create({ email, name, role, googleId, is_verified: true });
 
     if (role === 'candidate') {
       await CandidateProfile.create({ user_id: user._id, completion_percent: 0 });
@@ -156,3 +236,5 @@ router.post('/google/register', async (req, res) => {
     res.status(401).json({ error: 'Invalid Google token' });
   }
 });
+
+module.exports = router;

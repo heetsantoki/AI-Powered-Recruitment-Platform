@@ -4,6 +4,7 @@ import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import { ToastContainer } from '../components/Toast'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const STEPS = [
   { id: 'basic', label: 'About You', icon: '👤' },
@@ -46,7 +47,7 @@ function BasicStep({ data, onChange, onAISummary }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeIn 0.4s ease' }}>
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div className="form-group">
           <label className="form-label">Full Name *</label>
@@ -72,14 +73,14 @@ function BasicStep({ data, onChange, onAISummary }) {
             {aiLoading ? <><span className="spinner spinner-sm" />Generating...</> : '✦ AI Generate Summary'}
           </button>
         </div>
-        {aiLoading && <div className="ai-response-card"><AITypingIndicator /></div>}
+        {aiLoading && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="ai-response-card"><AITypingIndicator /></motion.div>}
         {aiSuggestion && !aiLoading && (
-          <div className="ai-response-card" style={{ marginBottom: 10 }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="ai-response-card" style={{ marginBottom: 10 }}>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>{aiSuggestion}</p>
-            <button type="button" className="btn btn-accent btn-sm" style={{ marginTop: 12 }} onClick={() => { onChange('summary', aiSuggestion); setAiSuggestion('') }}>
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" className="btn btn-accent btn-sm" style={{ marginTop: 12 }} onClick={() => { onChange('summary', aiSuggestion); setAiSuggestion('') }}>
               Use This Summary ✓
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         )}
         <textarea className="form-textarea" value={data.summary || ''} onChange={e => onChange('summary', e.target.value)} placeholder="Write a brief professional summary or use AI to generate one..." rows={4} />
       </div>
@@ -114,7 +115,7 @@ function BasicStep({ data, onChange, onAISummary }) {
           <input className="form-input" value={data.portfolio || ''} onChange={e => onChange('portfolio', e.target.value)} placeholder="yoursite.com" />
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -157,7 +158,7 @@ function ExperienceStep({ data, onChange }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeIn 0.4s ease' }}>
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* AI Parser Box */}
       <div style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.06), rgba(0,212,170,0.04))', border: '1px solid rgba(108,99,255,0.25)', borderRadius: 'var(--radius-lg)', padding: 24 }}>
         <h3 style={{ marginBottom: 6, fontSize: '1rem', color: 'var(--primary-light)' }}>✦ AI Experience Parser</h3>
@@ -173,14 +174,14 @@ function ExperienceStep({ data, onChange }) {
         </button>
 
         {aiLoading && (
-          <div className="ai-response-card" style={{ marginTop: 16 }}>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="ai-response-card" style={{ marginTop: 16 }}>
             <AITypingIndicator />
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 8 }}>Structuring your experience...</p>
-          </div>
+          </motion.div>
         )}
 
         {aiParsed && !aiLoading && (
-          <div className="ai-response-card" style={{ marginTop: 16 }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="ai-response-card" style={{ marginTop: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div><span style={{ color: 'var(--primary-light)', fontSize: '0.78rem', textTransform: 'uppercase' }}>Role</span><br /><strong>{aiParsed.job_title}</strong></div>
               <div><span style={{ color: 'var(--primary-light)', fontSize: '0.78rem', textTransform: 'uppercase' }}>Company</span><br /><strong>{aiParsed.company}</strong></div>
@@ -197,13 +198,14 @@ function ExperienceStep({ data, onChange }) {
               <button type="button" className="btn btn-accent btn-sm" onClick={acceptAIParsed}>Add to Profile ✓</button>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAiParsed(null)}>Dismiss</button>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
       {/* Experience Cards */}
+      <AnimatePresence>
       {data.map((exp, i) => (
-        <div key={i} className="card card-elevated" style={{ position: 'relative' }}>
+        <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} key={i} className="card card-elevated" style={{ position: 'relative' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, cursor: 'pointer' }} onClick={() => setActiveIdx(activeIdx === i ? null : i)}>
             <div>
               <strong>{exp.job_title || 'New Experience'}</strong>
@@ -212,12 +214,14 @@ function ExperienceStep({ data, onChange }) {
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {exp.is_current && <span className="badge badge-accent">Current</span>}
               <button type="button" onClick={(e) => { e.stopPropagation(); remove(i) }} className="btn btn-danger btn-sm btn-icon">✕</button>
-              <span style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>{activeIdx === i ? '▲' : '▼'}</span>
+              <motion.span animate={{ rotate: activeIdx === i ? 180 : 0 }} style={{ color: 'var(--text-muted)', fontSize: '1.2rem', display: 'inline-block' }}>▼</motion.span>
             </div>
           </div>
 
+          <AnimatePresence>
           {activeIdx === i && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeIn 0.3s ease' }}>
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div className="form-group">
                   <label className="form-label">Job Title</label>
@@ -251,14 +255,17 @@ function ExperienceStep({ data, onChange }) {
                 <textarea className="form-textarea" value={exp.description} onChange={e => update(i, 'description', e.target.value)} rows={3} placeholder="Describe your role and key achievements..." />
               </div>
             </div>
+            </motion.div>
           )}
-        </div>
+          </AnimatePresence>
+        </motion.div>
       ))}
+      </AnimatePresence>
 
       <button type="button" className="btn btn-secondary" onClick={addBlank} style={{ alignSelf: 'flex-start' }}>
         + Add Experience Manually
       </button>
-    </div>
+    </motion.div>
   )
 }
 
@@ -295,7 +302,7 @@ function SkillsStep({ data, onChange }) {
   const levelColor = { Beginner: 'var(--warning)', Intermediate: 'var(--primary-light)', Advanced: 'var(--accent)' }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeIn 0.4s ease' }}>
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* AI Skill Suggester */}
       <div style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.06), rgba(0,212,170,0.04))', border: '1px solid rgba(108,99,255,0.25)', borderRadius: 'var(--radius-lg)', padding: 24 }}>
         <h3 style={{ marginBottom: 6, fontSize: '1rem', color: 'var(--primary-light)' }}>✦ AI Skill Suggestions</h3>
@@ -314,9 +321,9 @@ function SkillsStep({ data, onChange }) {
             <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 10 }}>Click to add to your profile:</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {suggestions.map(s => (
-                <button key={s} type="button" className="skill-chip" onClick={() => addSuggested(s)} style={{ cursor: 'pointer' }}>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} key={s} type="button" className="skill-chip" onClick={() => addSuggested(s)} style={{ cursor: 'pointer' }}>
                   + {s}
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
@@ -351,20 +358,22 @@ function SkillsStep({ data, onChange }) {
       <div>
         <h3 style={{ fontSize: '1rem', marginBottom: 12 }}>Your Skills ({data.length})</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <AnimatePresence>
           {data.map((skill, i) => (
-            <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 100, padding: '6px 12px 6px 14px' }}>
+            <motion.div layout initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 100, padding: '6px 12px 6px 14px' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{skill.name}</span>
               <select style={{ background: 'transparent', border: 'none', color: levelColor[skill.level] || 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                 value={skill.level} onChange={e => updateLevel(i, e.target.value)}>
                 {SKILL_LEVELS.map(l => <option key={l} style={{ background: 'var(--bg-card)' }}>{l}</option>)}
               </select>
               <button type="button" onClick={() => remove(i)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem', padding: 0, lineHeight: 1 }}>✕</button>
-            </div>
+            </motion.div>
           ))}
+          </AnimatePresence>
           {data.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No skills added yet. Use AI suggestions or add manually.</p>}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -376,7 +385,7 @@ function ProjectsStep({ data, onChange }) {
   const updateTech = (i, techStr) => update(i, 'tech_stack', techStr.split(',').map(t => t.trim()).filter(Boolean))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.4s ease' }}>
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <h3 style={{ fontSize: '1.1rem', marginBottom: 4 }}>Your Projects</h3>
@@ -425,7 +434,7 @@ function ProjectsStep({ data, onChange }) {
           <button type="button" className="btn btn-primary" onClick={addBlank}>Add Your First Project</button>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -436,7 +445,7 @@ function EducationStep({ data, onChange }) {
   const update = (i, field, value) => { const u = [...data]; u[i] = { ...u[i], [field]: value }; onChange(u) }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.4s ease' }}>
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <h3 style={{ fontSize: '1.1rem', marginBottom: 4 }}>Education</h3>
@@ -491,7 +500,7 @@ function EducationStep({ data, onChange }) {
           <button type="button" className="btn btn-primary" onClick={addBlank}>Add Education</button>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -501,7 +510,7 @@ function PreviewStep({ profile, onSubmit, submitting }) {
   const initials = (basic.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeIn 0.4s ease' }}>
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.08), rgba(0,212,170,0.05))', border: '1px solid rgba(108,99,255,0.2)', borderRadius: 'var(--radius-xl)', padding: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
           <div className="avatar avatar-xl" style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4AA)', color: 'white' }}>{initials}</div>
@@ -568,7 +577,7 @@ function PreviewStep({ profile, onSubmit, submitting }) {
           {submitting ? <><span className="spinner spinner-sm" />Submitting...</> : '🚀 Submit Profile to Recruiters'}
         </button>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -724,8 +733,12 @@ export default function ProfileBuilder() {
         )}
 
         {/* Step content */}
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 32, marginBottom: 32 }}>
-          {steps[step].component}
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: 32, marginBottom: 32, overflow: 'hidden' }}>
+          <AnimatePresence mode="wait">
+            <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+              {steps[step].component}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Navigation */}
