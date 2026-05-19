@@ -7,26 +7,13 @@ const connectDB = require('./db/database');
 const app = express();
 connectDB();
 
-// Middleware
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      'https://ai-powered-recruitment-platform.vercel.app',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-    ];
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+// CORS - allow all origins (safe because we use JWT Bearer tokens, not cookies)
+app.use(cors({
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-};
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+}));
+app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -50,9 +37,6 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({ error: 'CORS: Origin not allowed', origin: req.headers.origin });
-  }
   res.status(500).json({ error: 'Internal server error' });
 });
 
