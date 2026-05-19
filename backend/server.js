@@ -22,12 +22,11 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
-//app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -51,6 +50,9 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'CORS: Origin not allowed', origin: req.headers.origin });
+  }
   res.status(500).json({ error: 'Internal server error' });
 });
 

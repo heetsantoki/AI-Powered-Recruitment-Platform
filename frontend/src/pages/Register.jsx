@@ -39,7 +39,11 @@ export default function Register() {
         navigate(form.role === 'recruiter' ? '/recruiter/dashboard' : '/onboarding')
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed.')
+      if (!err.response) {
+        setError('Network error — please check your internet connection and try again.')
+      } else {
+        setError(err.response?.data?.error || 'Registration failed.')
+      }
     } finally {
       setLoading(false)
     }
@@ -78,7 +82,11 @@ export default function Register() {
         navigate(res.data.user.role === 'recruiter' ? '/recruiter/dashboard' : '/profile/builder')
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Google Sign-Up failed.')
+      if (!err.response) {
+        setError('Network error — please check your internet connection and try again.')
+      } else {
+        setError(err.response?.data?.error || 'Google Sign-Up failed.')
+      }
     } finally {
       setLoading(false)
     }
@@ -94,7 +102,11 @@ export default function Register() {
       login(res.data.token, res.data.user)
       navigate(res.data.user.role === 'recruiter' ? '/recruiter/dashboard' : '/onboarding')
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed.')
+      if (!err.response) {
+        setError('Network error — please check your internet connection and try again.')
+      } else {
+        setError(err.response?.data?.error || 'Registration failed.')
+      }
     } finally {
       setLoading(false)
       setShowRoleModal(false)
@@ -153,7 +165,6 @@ export default function Register() {
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
             onError={() => setError('Google Sign-Up failed.')}
-            useOneTap
             text="signup_with"
           />
         </div>

@@ -35,7 +35,9 @@ export default function Login() {
       login(res.data.token, res.data.user)
       navigate(res.data.user.role === 'recruiter' ? '/recruiter/dashboard' : '/profile/builder')
     } catch (err) {
-      if (err.response?.data?.requires_otp) {
+      if (!err.response) {
+        setError('Network error — please check your internet connection and try again.')
+      } else if (err.response?.data?.requires_otp) {
         setShowOtp(true)
         setError(err.response?.data?.error || 'Verification required.')
       } else {
@@ -75,7 +77,11 @@ export default function Login() {
         navigate(res.data.user.role === 'recruiter' ? '/recruiter/dashboard' : '/profile/builder')
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Google Sign-In failed.')
+      if (!err.response) {
+        setError('Network error — please check your internet connection and try again.')
+      } else {
+        setError(err.response?.data?.error || 'Google Sign-In failed.')
+      }
     } finally {
       setLoading(false)
     }
@@ -91,7 +97,11 @@ export default function Login() {
       login(res.data.token, res.data.user)
       navigate(res.data.user.role === 'recruiter' ? '/recruiter/dashboard' : '/profile/builder')
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed.')
+      if (!err.response) {
+        setError('Network error — please check your internet connection and try again.')
+      } else {
+        setError(err.response?.data?.error || 'Registration failed.')
+      }
     } finally {
       setLoading(false)
       setShowRoleModal(false)
@@ -151,7 +161,6 @@ export default function Login() {
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
             onError={() => setError('Google Sign-In failed.')}
-            useOneTap
           />
         </div>
 
