@@ -29,7 +29,7 @@ function AITypingIndicator() {
 }
 
 // ── STEP 1: Basic Info ─────────────────────────────────────────────
-function BasicStep({ data, onChange, onAISummary }) {
+function BasicStep({ data, onChange, onAISummary, touched, onTouch }) {
   const [aiLoading, setAiLoading] = useState(false)
   const [aiSuggestion, setAiSuggestion] = useState('')
 
@@ -46,28 +46,33 @@ function BasicStep({ data, onChange, onAISummary }) {
     finally { setAiLoading(false) }
   }
 
+  const mandatoryEmpty = (field) => touched && !data[field]?.trim()
+  const mandatoryStyle = (field) => mandatoryEmpty(field) ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(225,112,85,0.15)' } : {}
+
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div className="form-group">
-          <label className="form-label">Full Name *</label>
-          <input className="form-input" value={data.name || ''} onChange={e => onChange('name', e.target.value)} placeholder="Alex Johnson" />
+          <label className="form-label">Full Name <span style={{ color: 'var(--danger)' }}>*</span></label>
+          <input className="form-input" style={mandatoryStyle('name')} value={data.name || ''} onChange={e => onChange('name', e.target.value)} onBlur={onTouch} placeholder="Alex Johnson" />
+          {mandatoryEmpty('name') && <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4 }}>Full name is required</span>}
         </div>
         <div className="form-group">
-          <label className="form-label">Location</label>
-          <input className="form-input" value={data.location || ''} onChange={e => onChange('location', e.target.value)} placeholder="Bangalore, India" />
+          <label className="form-label">Location <span style={{ color: 'var(--danger)' }}>*</span></label>
+          <input className="form-input" style={mandatoryStyle('location')} value={data.location || ''} onChange={e => onChange('location', e.target.value)} onBlur={onTouch} placeholder="Bangalore, India" />
+          {mandatoryEmpty('location') && <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4 }}>Location is required</span>}
         </div>
       </div>
 
       <div className="form-group">
-        <label className="form-label">Professional Headline *</label>
-        <input className="form-input" value={data.headline || ''} onChange={e => onChange('headline', e.target.value)} placeholder="e.g. Full-Stack Developer | React & Node.js | Open to Work" />
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>This appears at the top of your profile. Be specific and keyword-rich.</span>
+        <label className="form-label">Professional Headline <span style={{ color: 'var(--danger)' }}>*</span></label>
+        <input className="form-input" style={mandatoryStyle('headline')} value={data.headline || ''} onChange={e => onChange('headline', e.target.value)} onBlur={onTouch} placeholder="e.g. Full-Stack Developer | React & Node.js | Open to Work" />
+        {mandatoryEmpty('headline') ? <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4 }}>Professional headline is required</span> : <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>This appears at the top of your profile. Be specific and keyword-rich.</span>}
       </div>
 
       <div className="form-group">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <label className="form-label">Professional Summary</label>
+          <label className="form-label">Professional Summary <span style={{ color: 'var(--danger)' }}>*</span></label>
           <button type="button" onClick={generateSummary} disabled={aiLoading || !data.headline}
             className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem', gap: 6 }}>
             {aiLoading ? <><span className="spinner spinner-sm" />Generating...</> : '✦ AI Generate Summary'}
@@ -82,16 +87,18 @@ function BasicStep({ data, onChange, onAISummary }) {
             </motion.button>
           </motion.div>
         )}
-        <textarea className="form-textarea" value={data.summary || ''} onChange={e => onChange('summary', e.target.value)} placeholder="Write a brief professional summary or use AI to generate one..." rows={4} />
+        <textarea className="form-textarea" style={mandatoryStyle('summary')} value={data.summary || ''} onChange={e => onChange('summary', e.target.value)} onBlur={onTouch} placeholder="Write a brief professional summary or use AI to generate one..." rows={4} />
+        {mandatoryEmpty('summary') && <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4 }}>Professional summary is required</span>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div className="form-group">
-          <label className="form-label">Phone</label>
-          <input className="form-input" value={data.phone || ''} onChange={e => onChange('phone', e.target.value)} placeholder="+91 98765 43210" />
+          <label className="form-label">Phone <span style={{ color: 'var(--danger)' }}>*</span></label>
+          <input className="form-input" style={mandatoryStyle('phone')} value={data.phone || ''} onChange={e => onChange('phone', e.target.value)} onBlur={onTouch} placeholder="+91 98765 43210" />
+          {mandatoryEmpty('phone') && <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4 }}>Phone number is required</span>}
         </div>
         <div className="form-group">
-          <label className="form-label">Availability</label>
+          <label className="form-label">Availability <span style={{ color: 'var(--danger)' }}>*</span></label>
           <select className="form-select" value={data.availability || 'Open to work'} onChange={e => onChange('availability', e.target.value)}>
             <option>Open to work</option>
             <option>Actively looking</option>
@@ -120,7 +127,7 @@ function BasicStep({ data, onChange, onAISummary }) {
 }
 
 // ── STEP 2: Experience ─────────────────────────────────────────────
-function ExperienceStep({ data, onChange }) {
+function ExperienceStep({ data, onChange, isFresher, onFresherToggle }) {
   const [rawText, setRawText] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiParsed, setAiParsed] = useState(null)
@@ -159,6 +166,44 @@ function ExperienceStep({ data, onChange }) {
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Fresher Toggle */}
+      <motion.div
+        whileHover={{ scale: 1.01 }}
+        onClick={() => onFresherToggle(!isFresher)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 16, padding: '20px 24px', cursor: 'pointer',
+          background: isFresher ? 'linear-gradient(135deg, rgba(0,212,170,0.1), rgba(108,99,255,0.08))' : 'var(--bg-card)',
+          border: `2px solid ${isFresher ? 'var(--accent)' : 'var(--border)'}`,
+          borderRadius: 'var(--radius-lg)', transition: 'all 0.3s ease',
+        }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem',
+          background: isFresher ? 'rgba(0,212,170,0.15)' : 'rgba(108,99,255,0.08)',
+        }}>🎓</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 2 }}>I'm a Fresher <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.85rem' }}>— No professional experience</span></div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Select this if you're a recent graduate or new to the workforce</div>
+        </div>
+        <div style={{
+          width: 48, height: 26, borderRadius: 13, padding: 3, cursor: 'pointer', transition: 'all 0.3s ease',
+          background: isFresher ? 'var(--accent)' : 'var(--border)',
+        }}>
+          <motion.div animate={{ x: isFresher ? 22 : 0 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            style={{ width: 20, height: 20, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+        </div>
+      </motion.div>
+
+      {isFresher && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          style={{ textAlign: 'center', padding: '32px 24px', background: 'linear-gradient(135deg, rgba(0,212,170,0.05), rgba(108,99,255,0.04))', border: '1px dashed var(--accent)', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🚀</div>
+          <h3 style={{ marginBottom: 8, color: 'var(--accent)' }}>No worries! Everyone starts somewhere.</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: 420, margin: '0 auto' }}>Focus on your skills, projects, and education in the next steps — recruiters love to see potential!</p>
+        </motion.div>
+      )}
+
+      {!isFresher && (
+      <>
       {/* AI Parser Box */}
       <div style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.06), rgba(0,212,170,0.04))', border: '1px solid rgba(108,99,255,0.25)', borderRadius: 'var(--radius-lg)', padding: 24 }}>
         <h3 style={{ marginBottom: 6, fontSize: '1rem', color: 'var(--primary-light)' }}>✦ AI Experience Parser</h3>
@@ -265,6 +310,8 @@ function ExperienceStep({ data, onChange }) {
       <button type="button" className="btn btn-secondary" onClick={addBlank} style={{ alignSelf: 'flex-start' }}>
         + Add Experience Manually
       </button>
+      </>
+      )}
     </motion.div>
   )
 }
@@ -402,25 +449,25 @@ function ProjectsStep({ data, onChange }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="form-group">
-              <label className="form-label">Project Title *</label>
-              <input className="form-input" value={proj.title} onChange={e => update(i, 'title', e.target.value)} placeholder="SmartShop — E-commerce Platform" />
+              <label className="form-label">Project Title <span style={{ color: 'var(--danger)' }}>*</span></label>
+              <input className="form-input" style={!proj.title?.trim() ? { borderColor: 'rgba(225,112,85,0.4)' } : {}} value={proj.title} onChange={e => update(i, 'title', e.target.value)} placeholder="SmartShop — E-commerce Platform" />
             </div>
             <div className="form-group">
-              <label className="form-label">Description</label>
-              <textarea className="form-textarea" value={proj.description} onChange={e => update(i, 'description', e.target.value)} rows={3} placeholder="What does this project do? What problem does it solve?" />
+              <label className="form-label">Description <span style={{ color: 'var(--danger)' }}>*</span></label>
+              <textarea className="form-textarea" style={!proj.description?.trim() ? { borderColor: 'rgba(225,112,85,0.4)' } : {}} value={proj.description} onChange={e => update(i, 'description', e.target.value)} rows={3} placeholder="What does this project do? What problem does it solve?" />
             </div>
             <div className="form-group">
-              <label className="form-label">Tech Stack (comma-separated)</label>
-              <input className="form-input" value={Array.isArray(proj.tech_stack) ? proj.tech_stack.join(', ') : ''} onChange={e => updateTech(i, e.target.value)} placeholder="React, Node.js, MongoDB, Stripe" />
+              <label className="form-label">Tech Stack (comma-separated) <span style={{ color: 'var(--danger)' }}>*</span></label>
+              <input className="form-input" style={!(Array.isArray(proj.tech_stack) && proj.tech_stack.length > 0) ? { borderColor: 'rgba(225,112,85,0.4)' } : {}} value={Array.isArray(proj.tech_stack) ? proj.tech_stack.join(', ') : ''} onChange={e => updateTech(i, e.target.value)} placeholder="React, Node.js, MongoDB, Stripe" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-group">
-                <label className="form-label">Live URL</label>
+                <label className="form-label">Live URL <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(optional)</span></label>
                 <input className="form-input" value={proj.live_url || ''} onChange={e => update(i, 'live_url', e.target.value)} placeholder="yourproject.com" />
               </div>
               <div className="form-group">
-                <label className="form-label">GitHub URL</label>
-                <input className="form-input" value={proj.github_url || ''} onChange={e => update(i, 'github_url', e.target.value)} placeholder="github.com/you/project" />
+                <label className="form-label">GitHub URL <span style={{ color: 'var(--danger)' }}>*</span></label>
+                <input className="form-input" style={!proj.github_url?.trim() ? { borderColor: 'rgba(225,112,85,0.4)' } : {}} value={proj.github_url || ''} onChange={e => update(i, 'github_url', e.target.value)} placeholder="github.com/you/project" />
               </div>
             </div>
           </div>
@@ -589,10 +636,12 @@ export default function ProfileBuilder() {
   const [saveStatus, setSaveStatus] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [roleRecos, setRoleRecos] = useState([])
+  const [stepTouched, setStepTouched] = useState({})
   const saveTimer = useRef(null)
 
   const [basic, setBasic] = useState({ name: user?.name || '', headline: '', summary: '', location: '', phone: '', linkedin: '', github: '', portfolio: '', availability: 'Open to work' })
   const [experiences, setExperiences] = useState([])
+  const [isFresher, setIsFresher] = useState(false)
   const [skills, setSkills] = useState([])
   const [projects, setProjects] = useState([])
   const [education, setEducation] = useState([])
@@ -612,7 +661,7 @@ export default function ProfileBuilder() {
   }, [])
 
   const completion = Math.round(
-    ((basic.headline ? 1 : 0) + (basic.summary ? 1 : 0) + (basic.name ? 1 : 0) + (experiences.length > 0 ? 1 : 0) + (skills.length >= 3 ? 1 : 0) + (projects.length > 0 ? 1 : 0) + (education.length > 0 ? 1 : 0)) / 7 * 100
+    ((basic.headline ? 1 : 0) + (basic.summary ? 1 : 0) + (basic.name ? 1 : 0) + ((experiences.length > 0 || isFresher) ? 1 : 0) + (skills.length >= 3 ? 1 : 0) + (projects.length > 0 ? 1 : 0) + (education.length > 0 ? 1 : 0)) / 7 * 100
   )
 
   // Debounced auto-save
@@ -669,12 +718,43 @@ export default function ProfileBuilder() {
     }
   }
 
+  const handleTouchStep = (stepIdx) => setStepTouched(prev => ({ ...prev, [stepIdx]: true }))
+
+  // Validation hint messages per step
+  const getValidationHints = (stepIdx) => {
+    const hints = []
+    if (stepIdx === 0) {
+      if (!basic.name?.trim()) hints.push('Full Name')
+      if (!basic.location?.trim()) hints.push('Location')
+      if (!basic.headline?.trim()) hints.push('Professional Headline')
+      if (!basic.summary?.trim()) hints.push('Professional Summary')
+      if (!basic.phone?.trim()) hints.push('Phone')
+    }
+    if (stepIdx === 1) {
+      if (experiences.length === 0 && !isFresher) hints.push('Add experience or select "I\'m a Fresher"')
+    }
+    if (stepIdx === 2) {
+      if (skills.length < 1) hints.push('At least one skill')
+    }
+    if (stepIdx === 3) {
+      if (projects.length === 0) hints.push('At least one project')
+      else {
+        const incomplete = projects.some(p => !p.title?.trim() || !p.description?.trim() || !(Array.isArray(p.tech_stack) && p.tech_stack.length > 0) || !p.github_url?.trim())
+        if (incomplete) hints.push('Fill all required fields in each project (Title, Description, Tech Stack, GitHub URL)')
+      }
+    }
+    if (stepIdx === 4) {
+      if (education.length === 0) hints.push('At least one education entry')
+    }
+    return hints
+  }
+
   const steps = [
-    { component: <BasicStep data={basic} onChange={handleBasicChange} />, validate: () => basic.name && basic.headline },
-    { component: <ExperienceStep data={experiences} onChange={handleExperienceChange} />, validate: () => true },
+    { component: <BasicStep data={basic} onChange={handleBasicChange} touched={stepTouched[0]} onTouch={() => handleTouchStep(0)} />, validate: () => basic.name?.trim() && basic.location?.trim() && basic.headline?.trim() && basic.summary?.trim() && basic.phone?.trim() },
+    { component: <ExperienceStep data={experiences} onChange={handleExperienceChange} isFresher={isFresher} onFresherToggle={setIsFresher} />, validate: () => experiences.length > 0 || isFresher },
     { component: <SkillsStep data={skills} onChange={handleSkillsChange} />, validate: () => skills.length >= 1 },
-    { component: <ProjectsStep data={projects} onChange={handleProjectsChange} />, validate: () => true },
-    { component: <EducationStep data={education} onChange={handleEducationChange} />, validate: () => true },
+    { component: <ProjectsStep data={projects} onChange={handleProjectsChange} />, validate: () => projects.length > 0 && projects.every(p => p.title?.trim() && p.description?.trim() && Array.isArray(p.tech_stack) && p.tech_stack.length > 0 && p.github_url?.trim()) },
+    { component: <EducationStep data={education} onChange={handleEducationChange} />, validate: () => education.length > 0 },
     { component: <PreviewStep profile={{ basic, experiences, skills, projects, education }} onSubmit={handleSubmit} submitting={submitting} />, validate: () => true },
   ]
 
@@ -741,6 +821,24 @@ export default function ProfileBuilder() {
           </AnimatePresence>
         </div>
 
+        {/* Validation Hint */}
+        {step < STEPS.length - 1 && !steps[step].validate() && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', marginBottom: 16,
+              background: 'rgba(225,112,85,0.06)', border: '1px solid rgba(225,112,85,0.2)',
+              borderRadius: 'var(--radius-lg)', fontSize: '0.85rem', color: 'var(--text-secondary)'
+            }}>
+            <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+            <span>
+              <strong style={{ color: 'var(--danger)' }}>Required to continue:</strong>{' '}
+              {getValidationHints(step).join(', ')}
+            </span>
+          </motion.div>
+        )}
+
         {/* Navigation */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button type="button" className="btn btn-secondary" onClick={() => setStep(p => p - 1)} disabled={step === 0}>
@@ -750,9 +848,23 @@ export default function ProfileBuilder() {
             {STEPS.map((_, i) => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i <= step ? 'var(--primary)' : 'var(--border)', transition: 'all 0.3s' }} />)}
           </div>
           {step < STEPS.length - 1 && (
-            <button type="button" className="btn btn-primary" onClick={() => setStep(p => p + 1)}>
+            <motion.button
+              whileHover={steps[step].validate() ? { scale: 1.02 } : {}}
+              whileTap={steps[step].validate() ? { scale: 0.98 } : {}}
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                if (steps[step].validate()) {
+                  setStep(p => p + 1)
+                } else {
+                  handleTouchStep(step)
+                }
+              }}
+              disabled={!steps[step].validate()}
+              style={!steps[step].validate() ? { opacity: 0.5, cursor: 'not-allowed', filter: 'grayscale(0.4)' } : {}}
+            >
               {step === STEPS.length - 2 ? 'Preview Profile →' : 'Continue →'}
-            </button>
+            </motion.button>
           )}
           {step === STEPS.length - 1 && <div />}
         </div>
