@@ -108,11 +108,6 @@ export default function Login() {
     }
   }
 
-  const fillDemo = (role) => {
-    if (role === 'candidate') setForm({ email: 'hire-me@anshumat.org', password: 'HireMe@2025!' })
-    else setForm({ email: 'recruiter@demo.com', password: 'HireMe@2025!' })
-  }
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -140,22 +135,6 @@ export default function Login() {
           <h1 style={{ fontSize: '1.8rem', marginBottom: 8 }}>Welcome back</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Sign in to continue your journey</p>
         </div>
-
-        {/* Demo Quick Login */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
-          <motion.button 
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            onClick={() => fillDemo('candidate')} className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem', justifyContent: 'center', width: '100%' }}>
-            🎯 Demo Candidate
-          </motion.button>
-          <motion.button 
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            onClick={() => fillDemo('recruiter')} className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem', justifyContent: 'center', width: '100%' }}>
-            👔 Demo Recruiter
-          </motion.button>
-        </div>
-
-        <div className="divider">or sign in manually</div>
 
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
           <GoogleLogin
