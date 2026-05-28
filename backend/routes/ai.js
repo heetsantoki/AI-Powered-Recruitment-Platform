@@ -1,6 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+let genAI = null;
+if (process.env.GEMINI_API_KEY) {
+  try {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    console.log('✦ Gemini AI Engine initialized successfully.');
+  } catch (err) {
+    console.error('Failed to initialize Gemini AI client:', err);
+  }
+}
 
 // ─── AI Engine (Rule-based NLP simulation) ─────────────────────────────────
 
@@ -213,42 +224,163 @@ function recommendRoles(skills = [], headline = '') {
 // ─── Routes ────────────────────────────────────────────────────────────────
 
 // POST /api/ai/parse-experience
-router.post('/parse-experience', auth, (req, res) => {
-  const { text } = req.body;
+router.post('/parse-experience', auth, async (req, res) => {
+  const { text, engine } = req.body;
   if (!text || text.trim().length < 10) {
     return res.status(400).json({ error: 'Provide at least 10 characters of experience text' });
   }
-  // Simulate AI processing delay
+
+  if (engine === 'gemini' && genAI) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: { responseMimeType: 'application/json' }
+      });
+      const prompt = `
+You are an expert resume parsing AI. Parse the following free-form experience description into a structured JSON object.
+
+Text: "${text}"
+
+The JSON object MUST have the following structure:
+{
+  "job_title": "String (e.g. Senior Software Engineer)",
+  "company": "String (e.g. Google)",
+  "location": "String (e.g. Remote, Bangalore, India)",
+  "start_date": "String in YYYY-MM format or empty",
+  "end_date": "String in YYYY-MM format or null",
+  "is_current": Boolean,
+  "description": "String (a brief summary sentence describing the role)",
+  "bullets": ["Array of 2-4 high-impact bullet points focusing on quantitative achievements and actions starting with strong action verbs. Do not use markdown syntax in the bullets."]
+}
+`;
+      const response = await model.generateContent(prompt);
+      const parsedData = JSON.parse(response.response.text());
+      return res.json({ success: true, experience: parsedData, is_gemini: true });
+    } catch (err) {
+      console.error('Gemini parse-experience error, falling back to local engine:', err);
+      const result = parseExperienceText(text);
+      return res.json({ success: true, experience: result, is_gemini: false, fallback: true });
+    }
+  }
+
+  // Local AI engine
   setTimeout(() => {
     const result = parseExperienceText(text);
-    res.json({ success: true, experience: result });
+    res.json({ success: true, experience: result, is_gemini: false });
   }, 800);
 });
 
 // POST /api/ai/suggest-skills
-router.post('/suggest-skills', auth, (req, res) => {
+router.post('/suggest-skills', auth, async (req, res) => {
   const { text = '', role = '' } = req.body;
-  setTimeout(() => {
-    const suggestions = suggestSkills(text, role);
-    res.json({ success: true, suggestions });
-  }, 500);
+
+  if (!role || role.trim().length === 0) {
+    return res.status(400).json({ error: 'Please enter a target role to get suggestions.' });
+  }
+
+  if (genAI) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: { responseMimeType: 'application/json' }
+      });
+      const prompt = `
+You are an expert technical interviewer. Based on the target role: "${role}" and current candidate context (existing skills): "${text}", suggest a comprehensive list of the 24 most relevant technical skills, tools, frameworks, and specialized concepts.
+Provide a highly diverse, granular list matching the target role, covering libraries, build tools, design principles, testing suites, databases, and architectural concepts. 
+For example:
+- If Frontend Developer: suggest HTML, CSS, JavaScript, React, Tailwind CSS, Redux, TypeScript, Next.js, Responsive Design, Webpack, Jest, SASS, Git, REST APIs, Context API, CSS Grid, HTML5 Semantic Tags, Web Performance Optimization, etc.
+- If Backend Developer: suggest Node.js, Express.js, MongoDB, PostgreSQL, REST API, Docker, JWT, Authentication, MySQL, Redis, GraphQL, MVC Architecture, Microservices, Jest (Testing), AWS S3, CI/CD pipelines, System Design, etc.
+
+Return a JSON object with this exact structure:
+{
+  "suggestions": ["Skill 1", "Skill 2", "Skill 3", ...]
+}
+`;
+      const response = await model.generateContent(prompt);
+      const parsedData = JSON.parse(response.response.text());
+      return res.json({ success: true, suggestions: parsedData.suggestions, is_gemini: true });
+    } catch (err) {
+      console.error('Gemini suggest-skills error:', err);
+      return res.status(500).json({ error: 'Gemini AI failed to generate skill suggestions. Check API connection.' });
+    }
+  }
+
+  return res.status(403).json({ error: 'Gemini AI is not configured. Please add GEMINI_API_KEY to your .env file.' });
 });
 
 // POST /api/ai/generate-summary
-router.post('/generate-summary', auth, (req, res) => {
+router.post('/generate-summary', auth, async (req, res) => {
   const { profile } = req.body;
-  setTimeout(() => {
-    const summary = generateSummary(profile);
-    res.json({ success: true, summary });
-  }, 700);
+  const { name, headline, location, summaryInput, headlineInput } = profile || {};
+
+  if (genAI) {
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      
+      let prompt = '';
+      if (summaryInput && summaryInput.trim().length > 0) {
+        prompt = `
+You are an expert resume writer. Based on the raw, draft professional summary written by the candidate: "${summaryInput}", write a polished, professional, and compelling profile summary (3-4 sentences). 
+Improve the grammar, vocabulary, and sentence structure, while retaining the core skills and experiences mentioned.
+Candidate Name: ${name || 'the candidate'}
+Location: ${location || ''}
+Professional Headline: ${headline || ''}
+Keep the output highly professional. Do not use placeholders or markdown.
+`;
+      } else {
+        prompt = `
+You are an expert resume writer. Based on the candidate's professional headline: "${headlineInput || headline}", write a highly professional, compelling, and engaging profile summary (3-4 sentences) that highlights their expertise, target role, and potential impact.
+Candidate Name: ${name || 'the candidate'}
+Location: ${location || ''}
+Keep the output highly professional. Do not use placeholders or markdown.
+`;
+      }
+      
+      const response = await model.generateContent(prompt);
+      const summaryText = response.response.text().trim();
+      return res.json({ success: true, summary: summaryText, is_gemini: true });
+    } catch (err) {
+      console.error('Gemini generate-summary error, falling back to local engine:', err);
+      const summary = generateSummary(profile);
+      return res.json({ success: true, summary, is_gemini: false, fallback: true });
+    }
+  }
+
+  const summary = generateSummary(profile);
+  res.json({ success: true, summary, is_gemini: false, fallback: true });
 });
 
 // POST /api/ai/recommend-roles
-router.post('/recommend-roles', auth, (req, res) => {
-  const { skills = [], headline = '' } = req.body;
+router.post('/recommend-roles', auth, async (req, res) => {
+  const { skills = [], headline = '', engine } = req.body;
+
+  if (engine === 'gemini' && genAI) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: { responseMimeType: 'application/json' }
+      });
+      const prompt = `
+You are a senior career advisor. Based on the candidate's skills: ${JSON.stringify(skills)} and professional headline: "${headline}", recommend up to 4 exact job roles/titles that represent high-match career paths.
+
+Return a JSON object with this exact structure:
+{
+  "roles": ["Role 1", "Role 2", "Role 3", "Role 4"]
+}
+`;
+      const response = await model.generateContent(prompt);
+      const parsedData = JSON.parse(response.response.text());
+      return res.json({ success: true, roles: parsedData.roles, is_gemini: true });
+    } catch (err) {
+      console.error('Gemini recommend-roles error, falling back to local engine:', err);
+      const roles = recommendRoles(skills, headline);
+      return res.json({ success: true, roles, is_gemini: false, fallback: true });
+    }
+  }
+
   setTimeout(() => {
     const roles = recommendRoles(skills, headline);
-    res.json({ success: true, roles });
+    res.json({ success: true, roles, is_gemini: false });
   }, 400);
 });
 

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
-import { ToastContainer } from '../components/Toast'
+import { ToastContainer, useToast } from '../components/Toast'
 import { motion, AnimatePresence } from 'framer-motion'
+import PhoneInput, { validatePhone } from '../components/PhoneInput'
 
 const STEPS = [
   { id: 'basic', label: 'About You', icon: '👤' },
@@ -29,20 +30,41 @@ function AITypingIndicator() {
 }
 
 // ── STEP 1: Basic Info ─────────────────────────────────────────────
-function BasicStep({ data, onChange, onAISummary, touched, onTouch }) {
+function BasicStep({ data, onChange, onAISummary, touched, onTouch, showToast }) {
   const [aiLoading, setAiLoading] = useState(false)
   const [aiSuggestion, setAiSuggestion] = useState('')
 
   const generateSummary = async () => {
-    if (!data.headline) return
+    const summaryInput = data.summary?.trim()
+    const headlineInput = data.headline?.trim()
+
+    if (!summaryInput && !headlineInput) {
+      showToast('Please fill in either your Professional Summary or Headline first.', 'info')
+      return
+    }
+
     setAiLoading(true)
     setAiSuggestion('')
     try {
       const res = await api.post('/ai/generate-summary', {
-        profile: { name: data.name, headline: data.headline, location: data.location }
+        profile: { 
+          name: data.name, 
+          headline: data.headline, 
+          location: data.location,
+          summaryInput,
+          headlineInput
+        },
+        engine: 'gemini'
       })
       setAiSuggestion(res.data.summary)
-    } catch {}
+      if (res.data.fallback) {
+        showToast('Falling back to Local AI (Gemini key not configured)', 'info')
+      } else {
+        showToast('✦ Summary generated with Gemini Smart LLM!', 'success')
+      }
+    } catch {
+      showToast('Failed to generate summary.', 'error')
+    }
     finally { setAiLoading(false) }
   }
 
@@ -73,7 +95,7 @@ function BasicStep({ data, onChange, onAISummary, touched, onTouch }) {
       <div className="form-group">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <label className="form-label">Professional Summary <span style={{ color: 'var(--danger)' }}>*</span></label>
-          <button type="button" onClick={generateSummary} disabled={aiLoading || !data.headline}
+          <button type="button" onClick={generateSummary} disabled={aiLoading || (!data.headline?.trim() && !data.summary?.trim())}
             className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem', gap: 6 }}>
             {aiLoading ? <><span className="spinner spinner-sm" />Generating...</> : '✦ AI Generate Summary'}
           </button>
@@ -94,8 +116,8 @@ function BasicStep({ data, onChange, onAISummary, touched, onTouch }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div className="form-group">
           <label className="form-label">Phone <span style={{ color: 'var(--danger)' }}>*</span></label>
-          <input className="form-input" style={mandatoryStyle('phone')} value={data.phone || ''} onChange={e => onChange('phone', e.target.value)} onBlur={onTouch} placeholder="+91 98765 43210" />
-          {mandatoryEmpty('phone') && <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4 }}>Phone number is required</span>}
+          <PhoneInput value={data.phone || ''} onChange={val => onChange('phone', val)} />
+          {touched && !data.phone && <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4 }}>Phone number is required</span>}
         </div>
         <div className="form-group">
           <label className="form-label">Availability <span style={{ color: 'var(--danger)' }}>*</span></label>
@@ -127,7 +149,7 @@ function BasicStep({ data, onChange, onAISummary, touched, onTouch }) {
 }
 
 // ── STEP 2: Experience ─────────────────────────────────────────────
-function ExperienceStep({ data, onChange, isFresher, onFresherToggle }) {
+function ExperienceStep({ data, onChange, isFresher, onFresherToggle, showToast }) {
   const [rawText, setRawText] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiParsed, setAiParsed] = useState(null)
@@ -151,9 +173,19 @@ function ExperienceStep({ data, onChange, isFresher, onFresherToggle }) {
     setAiLoading(true)
     setAiParsed(null)
     try {
-      const res = await api.post('/ai/parse-experience', { text: rawText })
+      const res = await api.post('/ai/parse-experience', { text: rawText, engine: 'gemini' })
       setAiParsed(res.data.experience)
-    } catch (e) { console.error(e) }
+      if (res.data.fallback) {
+        showToast('Falling back to Local AI (Gemini key not configured)', 'info')
+      } else if (res.data.is_gemini) {
+        showToast('✦ Experience parsed using Gemini Smart LLM!', 'success')
+      } else {
+        showToast('Experience parsed successfully.', 'success')
+      }
+    } catch (e) {
+      console.error(e)
+      showToast('Failed to parse experience.', 'error')
+    }
     finally { setAiLoading(false) }
   }
 
@@ -317,18 +349,26 @@ function ExperienceStep({ data, onChange, isFresher, onFresherToggle }) {
 }
 
 // ── STEP 3: Skills ─────────────────────────────────────────────────
-function SkillsStep({ data, onChange }) {
+function SkillsStep({ data, onChange, showToast }) {
   const [role, setRole] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [aiLoading, setAiLoading] = useState(false)
   const [newSkill, setNewSkill] = useState({ name: '', level: 'Intermediate', category: 'Technical' })
 
   const fetchSuggestions = async () => {
+    if (!role?.trim()) {
+      showToast('Please enter a target role first.', 'info')
+      return
+    }
     setAiLoading(true)
     try {
       const res = await api.post('/ai/suggest-skills', { role, text: data.map(s => s.name).join(' ') })
       setSuggestions(res.data.suggestions.filter(s => !data.find(d => d.name === s)))
-    } catch {}
+      showToast('✦ Skill suggestions generated with Gemini!', 'success')
+    } catch (err) {
+      const errMsg = err.response?.data?.error || 'Failed to fetch skill suggestions.'
+      showToast(errMsg, 'error')
+    }
     finally { setAiLoading(false) }
   }
 
@@ -632,6 +672,7 @@ function PreviewStep({ profile, onSubmit, submitting }) {
 export default function ProfileBuilder() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const showToast = useToast()
   const [step, setStep] = useState(0)
   const [saveStatus, setSaveStatus] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -693,7 +734,7 @@ export default function ProfileBuilder() {
     autoSave('skills', { skills: val })
     // Fetch role recommendations
     if (val.length >= 3) {
-      api.post('/ai/recommend-roles', { skills: val, headline: basic.headline }).then(res => setRoleRecos(res.data.roles)).catch(() => {})
+      api.post('/ai/recommend-roles', { skills: val, headline: basic.headline, engine: 'gemini' }).then(res => setRoleRecos(res.data.roles)).catch(() => {})
     }
   }
 
@@ -703,7 +744,10 @@ export default function ProfileBuilder() {
   const handleSubmit = async () => {
     setSubmitting(true)
     try {
-      await api.post('/ai/generate-summary', { profile: { name: basic.name, headline: basic.headline, location: basic.location, experiences, skills, projects } }).then(res => {
+      await api.post('/ai/generate-summary', { 
+        profile: { name: basic.name, headline: basic.headline, location: basic.location, experiences, skills, projects },
+        engine: 'gemini'
+      }).then(res => {
         if (res.data.summary && !basic.summary) {
           const updated = { ...basic, summary: res.data.summary }
           setBasic(updated)
@@ -729,6 +773,7 @@ export default function ProfileBuilder() {
       if (!basic.headline?.trim()) hints.push('Professional Headline')
       if (!basic.summary?.trim()) hints.push('Professional Summary')
       if (!basic.phone?.trim()) hints.push('Phone')
+      else if (!validatePhone(basic.phone)) hints.push('Valid Phone matching Country rules')
     }
     if (stepIdx === 1) {
       if (experiences.length === 0 && !isFresher) hints.push('Add experience or select "I\'m a Fresher"')
@@ -750,9 +795,9 @@ export default function ProfileBuilder() {
   }
 
   const steps = [
-    { component: <BasicStep data={basic} onChange={handleBasicChange} touched={stepTouched[0]} onTouch={() => handleTouchStep(0)} />, validate: () => basic.name?.trim() && basic.location?.trim() && basic.headline?.trim() && basic.summary?.trim() && basic.phone?.trim() },
-    { component: <ExperienceStep data={experiences} onChange={handleExperienceChange} isFresher={isFresher} onFresherToggle={setIsFresher} />, validate: () => experiences.length > 0 || isFresher },
-    { component: <SkillsStep data={skills} onChange={handleSkillsChange} />, validate: () => skills.length >= 1 },
+    { component: <BasicStep data={basic} onChange={handleBasicChange} touched={stepTouched[0]} onTouch={() => handleTouchStep(0)} showToast={showToast} />, validate: () => basic.name?.trim() && basic.location?.trim() && basic.headline?.trim() && basic.summary?.trim() && validatePhone(basic.phone) },
+    { component: <ExperienceStep data={experiences} onChange={handleExperienceChange} isFresher={isFresher} onFresherToggle={setIsFresher} showToast={showToast} />, validate: () => experiences.length > 0 || isFresher },
+    { component: <SkillsStep data={skills} onChange={handleSkillsChange} showToast={showToast} />, validate: () => skills.length >= 1 },
     { component: <ProjectsStep data={projects} onChange={handleProjectsChange} />, validate: () => projects.length > 0 && projects.every(p => p.title?.trim() && p.description?.trim() && Array.isArray(p.tech_stack) && p.tech_stack.length > 0 && p.github_url?.trim()) },
     { component: <EducationStep data={education} onChange={handleEducationChange} />, validate: () => education.length > 0 },
     { component: <PreviewStep profile={{ basic, experiences, skills, projects, education }} onSubmit={handleSubmit} submitting={submitting} />, validate: () => true },
@@ -765,7 +810,7 @@ export default function ProfileBuilder() {
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '100px 24px 60px' }}>
         {/* Header */}
-        <div style={{ marginBottom: 40 }}>
+        <div style={{ marginBottom: 30 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div>
               <h1 style={{ fontSize: '1.8rem', marginBottom: 4 }}>AI Profile Builder</h1>
@@ -778,7 +823,7 @@ export default function ProfileBuilder() {
           </div>
 
           {/* Progress bar */}
-          <div className="progress-bar">
+          <div className="progress-bar" style={{ marginBottom: 24 }}>
             <div className="progress-fill" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
           </div>
 
