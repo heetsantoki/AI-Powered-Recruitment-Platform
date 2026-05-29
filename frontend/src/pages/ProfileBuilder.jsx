@@ -466,14 +466,19 @@ function SkillsStep({ data, onChange, showToast }) {
 
 // ── STEP 4: Projects ───────────────────────────────────────────────
 function ProjectsStep({ data, onChange }) {
-  const addBlank = () => onChange([...data, { title: '', description: '', tech_stack: [], live_url: '', github_url: '' }])
+  const addBlank = () => onChange([...data, { title: '', description: '', tech_stack: [], tech_input: '', live_url: '', github_url: '' }])
   const remove = (i) => onChange(data.filter((_, idx) => idx !== i))
   const update = (i, field, value) => { const u = [...data]; u[i] = { ...u[i], [field]: value }; onChange(u) }
-  const updateTech = (i, techStr) => update(i, 'tech_stack', techStr.split(',').map(t => t.trim()).filter(Boolean))
+  const updateTech = (i, techStr) => {
+    const techArray = techStr.split(',').map(t => t.trim()).filter(Boolean)
+    const u = [...data]
+    u[i] = { ...u[i], tech_input: techStr, tech_stack: techArray }
+    onChange(u)
+  }
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', marginBottom: 8 }}>
         <div>
           <h3 style={{ fontSize: '1.1rem', marginBottom: 4 }}>Your Projects</h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Showcase work that demonstrates your skills.</p>
@@ -498,7 +503,22 @@ function ProjectsStep({ data, onChange }) {
             </div>
             <div className="form-group">
               <label className="form-label">Tech Stack (comma-separated) <span style={{ color: 'var(--danger)' }}>*</span></label>
-              <input className="form-input" style={!(Array.isArray(proj.tech_stack) && proj.tech_stack.length > 0) ? { borderColor: 'rgba(225,112,85,0.4)' } : {}} value={Array.isArray(proj.tech_stack) ? proj.tech_stack.join(', ') : ''} onChange={e => updateTech(i, e.target.value)} placeholder="React, Node.js, MongoDB, Stripe" />
+              <input 
+                className="form-input" 
+                style={!(Array.isArray(proj.tech_stack) && proj.tech_stack.length > 0) ? { borderColor: 'rgba(225,112,85,0.4)' } : {}} 
+                value={proj.tech_input !== undefined ? proj.tech_input : (Array.isArray(proj.tech_stack) ? proj.tech_stack.join(', ') : '')} 
+                onChange={e => updateTech(i, e.target.value)} 
+                placeholder="React, Node.js, MongoDB, Stripe" 
+              />
+              {Array.isArray(proj.tech_stack) && proj.tech_stack.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {proj.tech_stack.map((tech, j) => (
+                    <span key={j} className="badge badge-primary animate-in" style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-group">

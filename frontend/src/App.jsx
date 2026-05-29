@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
+import ThemeCustomizer from './components/ThemeCustomizer'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -21,22 +23,25 @@ function ProtectedRoute({ children, role }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/onboarding" element={<ProtectedRoute role="candidate"><Onboarding /></ProtectedRoute>} />
-          <Route path="/profile/builder" element={<ProtectedRoute role="candidate"><ProfileBuilder /></ProtectedRoute>} />
-          <Route path="/profile/view" element={<ProtectedRoute role="candidate"><ProfilePreview /></ProtectedRoute>} />
-          <Route path="/recruiter/dashboard" element={<ProtectedRoute role="recruiter"><RecruiterDashboard /></ProtectedRoute>} />
-          <Route path="/recruiter/candidate/:id" element={<ProtectedRoute role="recruiter"><CandidateView /></ProtectedRoute>} />
-          <Route path="/recruiter/shortlisted" element={<ProtectedRoute role="recruiter"><Shortlisted /></ProtectedRoute>} />
-          <Route path="/recruiter/compare" element={<ProtectedRoute role="recruiter"><Compare /></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/onboarding" element={<ProtectedRoute role="candidate"><Onboarding /></ProtectedRoute>} />
+            <Route path="/profile/builder" element={<ProtectedRoute role="candidate"><ProfileBuilder /></ProtectedRoute>} />
+            <Route path="/profile/view" element={<ProtectedRoute role="candidate"><ProfilePreview /></ProtectedRoute>} />
+            <Route path="/recruiter/dashboard" element={<ProtectedRoute role="recruiter"><RecruiterDashboard /></ProtectedRoute>} />
+            <Route path="/recruiter/candidate/:id" element={<ProtectedRoute role="recruiter"><CandidateView /></ProtectedRoute>} />
+            <Route path="/recruiter/shortlisted" element={<ProtectedRoute role="recruiter"><Shortlisted /></ProtectedRoute>} />
+            <Route path="/recruiter/compare" element={<ProtectedRoute role="recruiter"><Compare /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <ThemeCustomizer />
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
