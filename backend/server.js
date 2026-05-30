@@ -23,6 +23,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/recruiter', require('./routes/recruiter'));
+app.use('/api/interview', require('./routes/interview'));
 
 // Health check
 app.get('/api/health', (req, res) => {

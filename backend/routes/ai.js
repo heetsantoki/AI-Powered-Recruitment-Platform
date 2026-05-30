@@ -13,6 +13,48 @@ if (process.env.GEMINI_API_KEY) {
   }
 }
 
+// Helper: Dynamically request content with retries and fallback models on 503/429 spikes
+async function generateGeminiContentWithFallback(prompt, generationConfig = null) {
+  const models = [
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-flash-latest',
+    'gemini-flash-lite-latest',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash'
+  ];
+  let lastError = null;
+  const maxRetries = 2; // Number of retries per model
+
+  for (const modelName of models) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🤖 Attempting Gemini content generation via ${modelName} (Attempt ${attempt + 1}/${maxRetries + 1})...`);
+        const model = genAI.getGenerativeModel({ model: modelName, generationConfig });
+        const response = await model.generateContent(prompt);
+        const text = response.response.text().trim();
+        console.log(`✅ Content generation succeeded using model: ${modelName} on attempt ${attempt + 1}`);
+        return text;
+      } catch (err) {
+        lastError = err;
+        const isTransient = err.status === 503 || err.message?.includes('503') || err.message?.includes('high demand') || err.message?.includes('ResourceExhausted');
+        const isQuotaExceeded = err.status === 429 || err.message?.includes('429') || err.message?.includes('quota') || err.message?.includes('Quota');
+
+        if (isTransient && !isQuotaExceeded && attempt < maxRetries) {
+          console.warn(`⚠️ Model "${modelName}" busy (503/high demand). Waiting 2 seconds before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue; // Try the next attempt for the same model
+        }
+        
+        console.warn(`⚠️ Model "${modelName}" failed permanently or exhausted all retries. Error:`, err.message || err);
+        break; // Break the attempt loop to move to the next fallback model in the list
+      }
+    }
+  }
+
+  throw lastError || new Error('All Gemini fallback models and retries failed.');
+}
+
 // ─── AI Engine (Rule-based NLP simulation) ─────────────────────────────────
 
 const SKILL_KEYWORDS = {
@@ -232,10 +274,6 @@ router.post('/parse-experience', auth, async (req, res) => {
 
   if (engine === 'gemini' && genAI) {
     try {
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: { responseMimeType: 'application/json' }
-      });
       const prompt = `
 You are an expert resume parsing AI. Parse the following free-form experience description into a structured JSON object.
 
@@ -253,8 +291,8 @@ The JSON object MUST have the following structure:
   "bullets": ["Array of 2-4 high-impact bullet points focusing on quantitative achievements and actions starting with strong action verbs. Do not use markdown syntax in the bullets."]
 }
 `;
-      const response = await model.generateContent(prompt);
-      const parsedData = JSON.parse(response.response.text());
+      const responseText = await generateGeminiContentWithFallback(prompt, { responseMimeType: 'application/json' });
+      const parsedData = JSON.parse(responseText);
       return res.json({ success: true, experience: parsedData, is_gemini: true });
     } catch (err) {
       console.error('Gemini parse-experience error, falling back to local engine:', err);
@@ -280,10 +318,6 @@ router.post('/suggest-skills', auth, async (req, res) => {
 
   if (genAI) {
     try {
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: { responseMimeType: 'application/json' }
-      });
       const prompt = `
 You are an expert technical interviewer. Based on the target role: "${role}" and current candidate context (existing skills): "${text}", suggest a comprehensive list of the 24 most relevant technical skills, tools, frameworks, and specialized concepts.
 Provide a highly diverse, granular list matching the target role, covering libraries, build tools, design principles, testing suites, databases, and architectural concepts. 
@@ -296,8 +330,8 @@ Return a JSON object with this exact structure:
   "suggestions": ["Skill 1", "Skill 2", "Skill 3", ...]
 }
 `;
-      const response = await model.generateContent(prompt);
-      const parsedData = JSON.parse(response.response.text());
+      const responseText = await generateGeminiContentWithFallback(prompt, { responseMimeType: 'application/json' });
+      const parsedData = JSON.parse(responseText);
       return res.json({ success: true, suggestions: parsedData.suggestions, is_gemini: true });
     } catch (err) {
       console.error('Gemini suggest-skills error:', err);
@@ -315,8 +349,6 @@ router.post('/generate-summary', auth, async (req, res) => {
 
   if (genAI) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      
       let prompt = '';
       if (summaryInput && summaryInput.trim().length > 0) {
         prompt = `
@@ -336,8 +368,7 @@ Keep the output highly professional. Do not use placeholders or markdown.
 `;
       }
       
-      const response = await model.generateContent(prompt);
-      const summaryText = response.response.text().trim();
+      const summaryText = await generateGeminiContentWithFallback(prompt);
       return res.json({ success: true, summary: summaryText, is_gemini: true });
     } catch (err) {
       console.error('Gemini generate-summary error, falling back to local engine:', err);
@@ -356,10 +387,6 @@ router.post('/recommend-roles', auth, async (req, res) => {
 
   if (engine === 'gemini' && genAI) {
     try {
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: { responseMimeType: 'application/json' }
-      });
       const prompt = `
 You are a senior career advisor. Based on the candidate's skills: ${JSON.stringify(skills)} and professional headline: "${headline}", recommend up to 4 exact job roles/titles that represent high-match career paths.
 
@@ -368,8 +395,8 @@ Return a JSON object with this exact structure:
   "roles": ["Role 1", "Role 2", "Role 3", "Role 4"]
 }
 `;
-      const response = await model.generateContent(prompt);
-      const parsedData = JSON.parse(response.response.text());
+      const responseText = await generateGeminiContentWithFallback(prompt, { responseMimeType: 'application/json' });
+      const parsedData = JSON.parse(responseText);
       return res.json({ success: true, roles: parsedData.roles, is_gemini: true });
     } catch (err) {
       console.error('Gemini recommend-roles error, falling back to local engine:', err);

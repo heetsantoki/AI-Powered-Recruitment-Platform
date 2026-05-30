@@ -881,6 +881,7 @@ export default function ProfilePreview() {
   const [loading, setLoading] = useState(true)
   const [linkCopied, setLinkCopied] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [showTranscript, setShowTranscript] = useState(false)
   
   // Improvement 1: Persist Template Selection in localStorage
   const [pdfTemplate, setPdfTemplate] = useState(() => {
@@ -970,13 +971,19 @@ export default function ProfilePreview() {
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
   if (!profile) return null
 
-  const { user: u, profile: p, skills } = profile
+  const { user: u, profile: p, skills, interview } = profile
   const initials = (u?.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   const skillsByCategory = {}
   skills.forEach(s => { if (!skillsByCategory[s.category]) skillsByCategory[s.category] = []; skillsByCategory[s.category].push(s) })
 
   // Active Layout Rendering Selection
   const activeTemplate = RESUME_TEMPLATES[pdfTemplate] || RESUME_TEMPLATES.modern
+
+  const getScoreColor = (score) => {
+    if (score >= 80) return 'var(--accent)'
+    if (score >= 60) return 'var(--warning)'
+    return 'var(--danger)'
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -1040,6 +1047,111 @@ export default function ProfilePreview() {
             <div style={{ marginTop: 10, color: 'var(--text-muted)', fontSize: '0.85rem' }}>Complete your profile and submit to become visible to recruiters</div>
           )}
         </div>
+
+        {/* ─── AI ROLEPLAY MINI-INTERVIEW ASSESSMENTS ─── */}
+        {(!interview || interview.status === 'not_started') && (
+          <div className="card animate-in" style={{ marginBottom: 20, background: 'linear-gradient(135deg, rgba(108,99,255,0.08), rgba(0,212,170,0.04))', border: '1.5px dashed var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <h3 style={{ fontSize: '1.02rem', color: '#fff', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: 'var(--accent)' }}>✦</span> Validate Your Profile with AI
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.4 }}>
+                Complete a 5-question dynamic scenario-based chat interview with our AI Lead to earn verified skills badges and an interview score visible to recruiters.
+              </p>
+            </div>
+            <Link to="/profile/interview" className="btn btn-accent btn-sm" style={{ padding: '8px 18px' }}>
+              Start AI Screening
+            </Link>
+          </div>
+        )}
+
+        {interview && interview.status === 'in_progress' && (
+          <div className="card animate-in" style={{ marginBottom: 20, background: 'linear-gradient(135deg, rgba(253,203,110,0.08), rgba(108,99,255,0.04))', border: '1.5px dashed var(--warning)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <h3 style={{ fontSize: '1.02rem', color: '#fff', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: 'var(--warning)' }}>⏱</span> AI Technical screening In Progress
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.4 }}>
+                You have an active, incomplete technical screening session for the role of <strong>{interview.role}</strong>. Resume now to complete your profile verification!
+              </p>
+            </div>
+            <Link to="/profile/interview" className="btn btn-accent btn-sm" style={{ padding: '8px 18px' }}>
+              Resume Screening
+            </Link>
+          </div>
+        )}
+
+        {interview && interview.status === 'completed' && interview.evaluation && (
+          <div className="card animate-in" style={{ marginBottom: 20, border: '1.5px solid var(--border)', background: 'linear-gradient(135deg, rgba(108,99,255,0.06), rgba(0,212,170,0.02))' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+              <div>
+                <span className="badge badge-accent" style={{ fontSize: '0.72rem', textTransform: 'uppercase', marginBottom: 6 }}>✦ Verified AI Assessment</span>
+                <h3 style={{ fontSize: '1.25rem', color: '#fff', marginBottom: 4 }}>
+                  AI Screening Score: <span style={{ color: getScoreColor(interview.evaluation.score), fontWeight: 800 }}>{interview.evaluation.score}%</span>
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Evaluated for target role: <strong>{interview.role}</strong></p>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Link to="/profile/interview" className="btn btn-secondary btn-sm" style={{ fontSize: '0.78rem', padding: '6px 12px' }}>Retake screening</Link>
+              </div>
+            </div>
+
+            {/* Badges */}
+            {interview.evaluation.validated_badges?.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                {interview.evaluation.validated_badges.map((badge, idx) => (
+                  <span key={idx} className="badge badge-primary" style={{ fontSize: '0.74rem' }}>✦ {badge}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Feedback Synthesis */}
+            <p style={{ color: 'var(--text)', fontSize: '0.88rem', lineHeight: 1.5, background: 'rgba(255,255,255,0.012)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius)', padding: 14, marginBottom: 14 }}>
+              {interview.evaluation.feedback}
+            </p>
+
+            {/* Strengths & Weaknesses (Grid) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }} className="media-grid">
+              <div style={{ background: 'rgba(0, 212, 170, 0.02)', border: '1px solid rgba(0, 212, 170, 0.12)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
+                <strong style={{ fontSize: '0.78rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Key Strengths</strong>
+                <ul style={{ paddingLeft: 12, fontSize: '0.8rem', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {interview.evaluation.strengths?.slice(0, 2).map((s, i) => <li key={i}>• {s}</li>)}
+                </ul>
+              </div>
+              <div style={{ background: 'rgba(253, 203, 110, 0.02)', border: '1px solid rgba(253, 203, 110, 0.12)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
+                <strong style={{ fontSize: '0.78rem', color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Growth Areas</strong>
+                <ul style={{ paddingLeft: 12, fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {interview.evaluation.growth_areas?.slice(0, 2).map((w, i) => <li key={i}>• {w}</li>)}
+                </ul>
+              </div>
+            </div>
+
+            {/* Transcript Accordion */}
+            <button 
+              onClick={() => setShowTranscript(!showTranscript)}
+              className="btn btn-secondary btn-sm"
+              style={{ width: '100%', justifyContent: 'center', background: 'none', border: '1px solid var(--border-light)', fontSize: '0.8rem' }}
+            >
+              {showTranscript ? '▲ Hide Screening Dialogue Transcript' : '▼ View Verified Screening Dialogue Transcript'}
+            </button>
+            
+            {showTranscript && (
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius)', padding: 12, maxHeight: 220, overflowY: 'auto' }}>
+                {interview.chat_history.map((msg, i) => {
+                  const isAi = msg.sender === 'ai'
+                  return (
+                    <div key={i} style={{ fontSize: '0.8rem', borderBottom: '1px solid var(--border-light)', paddingBottom: 6 }}>
+                      <div style={{ color: isAi ? 'var(--primary-light)' : 'var(--accent)', fontWeight: 700, marginBottom: 2 }}>
+                        {isAi ? '🤖 AI Lead' : '👤 You'}
+                      </div>
+                      <p style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{msg.text}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ─── DYNAMIC 1:1 CONSISTENT RESUME PREVIEW AREA ─── */}
         <div style={{ position: 'relative' }}>

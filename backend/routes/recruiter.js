@@ -8,6 +8,7 @@ const Skill = require('../models/Skill');
 const Project = require('../models/Project');
 const Education = require('../models/Education');
 const Shortlist = require('../models/Shortlist');
+const Interview = require('../models/Interview');
 
 // Middleware: ensure recruiter role
 function requireRecruiter(req, res, next) {
@@ -24,13 +25,15 @@ async function getCandidateFull(userId) {
   const skills = await Skill.find({ user_id: userId });
   const projects = await Project.find({ user_id: userId }).sort({ sort_order: 1 });
   const education = await Education.find({ user_id: userId }).sort({ end_year: -1 });
+  const interview = await Interview.findOne({ user_id: userId }) || null;
   return { 
     user: user ? { id: user._id, name: user.name, email: user.email } : null, 
     profile, 
     experiences, 
     skills, 
     projects, 
-    education 
+    education,
+    interview
   };
 }
 
@@ -77,6 +80,11 @@ router.get('/candidates', auth, requireRecruiter, async (req, res) => {
       const u = p.user_id;
       const skills = await Skill.find({ user_id: u._id }).limit(6);
       const isShortlisted = await Shortlist.findOne({ recruiter_id: req.user.id, candidate_id: u._id });
+      const interview = await Interview.findOne({ user_id: u._id });
+      
+      const is_interview_completed = interview ? interview.status === 'completed' : false;
+      const interview_score = (interview && interview.evaluation) ? interview.evaluation.score : null;
+      const validated_badges = (interview && interview.evaluation) ? interview.evaluation.validated_badges : [];
 
       return {
         id: u._id,
@@ -89,7 +97,10 @@ router.get('/candidates', auth, requireRecruiter, async (req, res) => {
         is_submitted: p.is_submitted,
         updated_at: p.updated_at,
         skills,
-        is_shortlisted: !!isShortlisted
+        is_shortlisted: !!isShortlisted,
+        is_interview_completed,
+        interview_score,
+        validated_badges
       };
     }));
 

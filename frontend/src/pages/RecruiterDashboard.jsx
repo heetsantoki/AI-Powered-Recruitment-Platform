@@ -168,7 +168,23 @@ export default function RecruiterDashboard() {
                 <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
                   <div className="avatar" style={{ background: avatarGradients[idx % 4], color: 'white', flexShrink: 0 }}>{initials(c.name)}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: 2 }}>{c.name}</h3>
+                    <h3 style={{ fontSize: '1rem', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {c.name}
+                      {c.is_interview_completed && (
+                        <span 
+                          className="badge badge-accent" 
+                          style={{ 
+                            fontSize: '0.68rem', 
+                            padding: '2px 8px', 
+                            fontWeight: 750, 
+                            boxShadow: '0 0 12px rgba(0, 212, 170, 0.2)' 
+                          }}
+                          title="Verified via AI Technical screening"
+                        >
+                          ✦ AI Validated ({c.interview_score}%)
+                        </span>
+                      )}
+                    </h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.headline}</p>
                     {c.location && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 2 }}>📍 {c.location}</p>}
                   </div>

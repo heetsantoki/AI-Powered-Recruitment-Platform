@@ -7,6 +7,7 @@ const Skill = require('../models/Skill');
 const Project = require('../models/Project');
 const Education = require('../models/Education');
 const User = require('../models/User');
+const Interview = require('../models/Interview');
 
 // Calculate completion percent based on filled sections
 async function calcCompletion(userId) {
@@ -45,6 +46,7 @@ router.get('/', auth, async (req, res) => {
     const skills = await Skill.find({ user_id: req.user.id });
     const projects = await Project.find({ user_id: req.user.id }).sort({ sort_order: 1, _id: -1 });
     const education = await Education.find({ user_id: req.user.id }).sort({ end_year: -1 });
+    const interview = await Interview.findOne({ user_id: req.user.id }) || null;
 
     const normalizedUser = user ? { id: user._id, name: user.name, email: user.email } : null;
 
@@ -54,7 +56,8 @@ router.get('/', auth, async (req, res) => {
       experiences,
       skills,
       projects,
-      education
+      education,
+      interview
     });
   } catch (err) {
     console.error(err);

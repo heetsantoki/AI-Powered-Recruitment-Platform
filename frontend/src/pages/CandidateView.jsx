@@ -7,6 +7,12 @@ import { motion } from 'framer-motion'
 
 const levelColor = { Beginner: '#FDCB6E', Intermediate: '#6C63FF', Advanced: '#00D4AA' }
 
+const getScoreColor = (score) => {
+  if (score >= 80) return 'var(--accent)'
+  if (score >= 60) return 'var(--warning)'
+  return 'var(--danger)'
+}
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -28,6 +34,7 @@ export default function CandidateView() {
   const [shortlisting, setShortlisting] = useState(false)
   const [note, setNote] = useState('')
   const [showNote, setShowNote] = useState(false)
+  const [showTranscript, setShowTranscript] = useState(false)
 
   useEffect(() => {
     api.get(`/recruiter/candidates/${id}`).then(res => {
@@ -50,7 +57,7 @@ export default function CandidateView() {
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
   if (!data) return <div className="loading-screen"><p style={{ color: 'var(--text-secondary)' }}>Candidate not found</p></div>
 
-  const { user: u, profile: p, experiences, skills, projects, education } = data
+  const { user: u, profile: p, experiences, skills, projects, education, interview } = data
   const initials = (u?.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   const isShortlisted = !!data.shortlist
 
@@ -126,6 +133,87 @@ export default function CandidateView() {
             </div>
           </div>
         </motion.div>
+
+        {/* AI Screening Report Card */}
+        {interview && interview.status === 'completed' && interview.evaluation && (
+          <motion.div 
+            variants={itemVariants} 
+            className="card card-elevated animate-in" 
+            style={{ 
+              marginBottom: 20, 
+              border: '1.5px solid var(--border)', 
+              background: 'linear-gradient(135deg, rgba(108,99,255,0.06), rgba(0,212,170,0.02))' 
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+              <div>
+                <span className="badge badge-accent" style={{ fontSize: '0.72rem', textTransform: 'uppercase', marginBottom: 6 }}>✦ Verified AI Assessment</span>
+                <h2 style={{ fontSize: '1.25rem', color: '#fff', marginBottom: 4 }}>
+                  AI Screening Match Score: <span style={{ color: getScoreColor(interview.evaluation.score), fontWeight: 800 }}>{interview.evaluation.score}%</span>
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Evaluated for target role: <strong>{interview.role}</strong></p>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Conducted: {new Date(interview.evaluation.conducted_at || interview.updated_at).toLocaleDateString()}
+              </div>
+            </div>
+
+            {/* Badges */}
+            {interview.evaluation.validated_badges?.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                {interview.evaluation.validated_badges.map((badge, idx) => (
+                  <span key={idx} className="badge badge-primary" style={{ fontSize: '0.74rem' }}>✦ {badge}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Overall Feedback */}
+            <p style={{ color: 'var(--text)', fontSize: '0.88rem', lineHeight: 1.5, background: 'rgba(255,255,255,0.012)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius)', padding: 14, marginBottom: 14 }}>
+              {interview.evaluation.feedback}
+            </p>
+
+            {/* Strengths & Weaknesses */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }} className="media-grid">
+              <div style={{ background: 'rgba(0, 212, 170, 0.02)', border: '1px solid rgba(0, 212, 170, 0.12)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
+                <strong style={{ fontSize: '0.78rem', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Verified Strengths</strong>
+                <ul style={{ paddingLeft: 12, fontSize: '0.8rem', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {interview.evaluation.strengths?.slice(0, 2).map((s, i) => <li key={i}>• {s}</li>)}
+                </ul>
+              </div>
+              <div style={{ background: 'rgba(253, 203, 110, 0.02)', border: '1px solid rgba(253, 203, 110, 0.12)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
+                <strong style={{ fontSize: '0.78rem', color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Growth Recommendations</strong>
+                <ul style={{ paddingLeft: 12, fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {interview.evaluation.growth_areas?.slice(0, 2).map((w, i) => <li key={i}>• {w}</li>)}
+                </ul>
+              </div>
+            </div>
+
+            {/* Transcript Accordion */}
+            <button 
+              onClick={() => setShowTranscript(!showTranscript)}
+              className="btn btn-secondary btn-sm"
+              style={{ width: '100%', justifyContent: 'center', background: 'none', border: '1px solid var(--border-light)', fontSize: '0.8rem' }}
+            >
+              {showTranscript ? '▲ Hide Screening Dialogue Transcript' : '▼ View Verified Screening Dialogue Transcript'}
+            </button>
+            
+            {showTranscript && (
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius)', padding: 12, maxHeight: 220, overflowY: 'auto' }}>
+                {interview.chat_history.map((msg, i) => {
+                  const isAi = msg.sender === 'ai'
+                  return (
+                    <div key={i} style={{ fontSize: '0.8rem', borderBottom: '1px solid var(--border-light)', paddingBottom: 6 }}>
+                      <div style={{ color: isAi ? 'var(--primary-light)' : 'var(--accent)', fontWeight: 700, marginBottom: 2 }}>
+                        {isAi ? '🤖 AI Lead' : '👤 Candidate'}
+                      </div>
+                      <p style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{msg.text}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Summary */}
         {p.summary && (

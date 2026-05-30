@@ -8,6 +8,7 @@ import Register from './pages/Register'
 import Onboarding from './pages/Onboarding'
 import ProfileBuilder from './pages/ProfileBuilder'
 import ProfilePreview from './pages/ProfilePreview'
+import InterviewSession from './pages/InterviewSession'
 import RecruiterDashboard from './pages/RecruiterDashboard'
 import CandidateView from './pages/CandidateView'
 import Shortlisted from './pages/Shortlisted'
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/onboarding" element={<ProtectedRoute role="candidate"><Onboarding /></ProtectedRoute>} />
             <Route path="/profile/builder" element={<ProtectedRoute role="candidate"><ProfileBuilder /></ProtectedRoute>} />
             <Route path="/profile/view" element={<ProtectedRoute role="candidate"><ProfilePreview /></ProtectedRoute>} />
+            <Route path="/profile/interview" element={<ProtectedRoute role="candidate"><InterviewSession /></ProtectedRoute>} />
             <Route path="/recruiter/dashboard" element={<ProtectedRoute role="recruiter"><RecruiterDashboard /></ProtectedRoute>} />
             <Route path="/recruiter/candidate/:id" element={<ProtectedRoute role="recruiter"><CandidateView /></ProtectedRoute>} />
             <Route path="/recruiter/shortlisted" element={<ProtectedRoute role="recruiter"><Shortlisted /></ProtectedRoute>} />
