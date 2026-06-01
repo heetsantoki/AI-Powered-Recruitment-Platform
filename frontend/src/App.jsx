@@ -13,12 +13,30 @@ import RecruiterDashboard from './pages/RecruiterDashboard'
 import CandidateView from './pages/CandidateView'
 import Shortlisted from './pages/Shortlisted'
 import Compare from './pages/Compare'
+import CompanyProfile from './pages/CompanyProfile'
 
-function ProtectedRoute({ children, role }) {
+function ProtectedRoute({ children, role, allowIncompleteCompanyProfile = false }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
   if (!user) return <Navigate to="/login" replace />
-  if (role && user.role !== role) return <Navigate to={user.role === 'recruiter' ? '/recruiter/dashboard' : '/profile/builder'} replace />
+  
+  if (role && user.role !== role) {
+    if (user.role === 'recruiter') {
+      return <Navigate to={user.is_company_profile_completed ? '/recruiter/dashboard' : '/recruiter/profile/complete'} replace />
+    } else {
+      return <Navigate to="/profile/builder" replace />
+    }
+  }
+
+  if (user.role === 'recruiter') {
+    if (!user.is_company_profile_completed && !allowIncompleteCompanyProfile) {
+      return <Navigate to="/recruiter/profile/complete" replace />
+    }
+    if (user.is_company_profile_completed && allowIncompleteCompanyProfile) {
+      return <Navigate to="/recruiter/dashboard" replace />
+    }
+  }
+
   return children
 }
 
@@ -39,6 +57,7 @@ export default function App() {
             <Route path="/recruiter/candidate/:id" element={<ProtectedRoute role="recruiter"><CandidateView /></ProtectedRoute>} />
             <Route path="/recruiter/shortlisted" element={<ProtectedRoute role="recruiter"><Shortlisted /></ProtectedRoute>} />
             <Route path="/recruiter/compare" element={<ProtectedRoute role="recruiter"><Compare /></ProtectedRoute>} />
+            <Route path="/recruiter/profile/complete" element={<ProtectedRoute role="recruiter" allowIncompleteCompanyProfile={true}><CompanyProfile /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <ThemeCustomizer />

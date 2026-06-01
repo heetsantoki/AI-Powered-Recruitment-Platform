@@ -47,7 +47,7 @@ export default function CandidateView() {
   const handleShortlist = async () => {
     setShortlisting(true)
     try {
-      const res = await api.post('/recruiter/shortlist', { candidate_id: parseInt(id), note })
+      const res = await api.post('/recruiter/shortlist', { candidate_id: id, note })
       setData(prev => ({ ...prev, shortlist: res.data.action === 'added' ? { note } : null }))
       setShowNote(false)
     } catch {}

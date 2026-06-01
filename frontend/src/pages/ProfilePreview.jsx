@@ -971,7 +971,7 @@ export default function ProfilePreview() {
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
   if (!profile) return null
 
-  const { user: u, profile: p, skills, interview } = profile
+  const { user: u, profile: p, skills, interview, shortlistedBy } = profile
   const initials = (u?.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   const skillsByCategory = {}
   skills.forEach(s => { if (!skillsByCategory[s.category]) skillsByCategory[s.category] = []; skillsByCategory[s.category].push(s) })
@@ -1047,6 +1047,8 @@ export default function ProfilePreview() {
             <div style={{ marginTop: 10, color: 'var(--text-muted)', fontSize: '0.85rem' }}>Complete your profile and submit to become visible to recruiters</div>
           )}
         </div>
+
+
 
         {/* ─── AI ROLEPLAY MINI-INTERVIEW ASSESSMENTS ─── */}
         {(!interview || interview.status === 'not_started') && (

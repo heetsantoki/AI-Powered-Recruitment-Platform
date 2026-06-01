@@ -8,6 +8,13 @@ const validator = require('validator');
 const { OAuth2Client } = require('google-auth-library');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const RecruiterProfile = require('../models/RecruiterProfile');
+
+async function getCompanyProfileStatus(userId, role) {
+  if (role !== 'recruiter') return false;
+  const profile = await RecruiterProfile.findOne({ user_id: userId });
+  return profile ? profile.is_completed : false;
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ai_recruitment_secret';
 
@@ -111,9 +118,11 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    const is_company_profile_completed = await getCompanyProfileStatus(user._id, user.role);
+
     res.json({
       token,
-      user: { id: user._id, email: user.email, role: user.role, name: user.name }
+      user: { id: user._id, email: user.email, role: user.role, name: user.name, is_company_profile_completed }
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -157,9 +166,11 @@ router.post('/verify-otp', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    const is_company_profile_completed = await getCompanyProfileStatus(user._id, user.role);
+
     res.json({
       token,
-      user: { id: user._id, email: user.email, role: user.role, name: user.name }
+      user: { id: user._id, email: user.email, role: user.role, name: user.name, is_company_profile_completed }
     });
   } catch (err) {
     console.error('Verify OTP error:', err);
@@ -171,7 +182,18 @@ router.post('/verify-otp', async (req, res) => {
 router.get('/me', require('../middleware/auth'), async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('email role name created_at');
-    res.json(user);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const is_company_profile_completed = await getCompanyProfileStatus(user._id, user.role);
+    
+    res.json({
+      _id: user._id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      created_at: user.created_at,
+      is_company_profile_completed
+    });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -198,7 +220,8 @@ router.post('/google', async (req, res) => {
         await user.save();
       }
       const token = jwt.sign({ id: user._id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ token, user: { id: user._id, email: user.email, role: user.role, name: user.name } });
+      const is_company_profile_completed = await getCompanyProfileStatus(user._id, user.role);
+      return res.json({ token, user: { id: user._id, email: user.email, role: user.role, name: user.name, is_company_profile_completed } });
     }
 
     // User not found, needs role
@@ -233,7 +256,8 @@ router.post('/google/register', async (req, res) => {
     }
 
     const token = jwt.sign({ id: user._id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: user._id, email: user.email, role: user.role, name: user.name } });
+    const is_company_profile_completed = await getCompanyProfileStatus(user._id, user.role);
+    res.status(201).json({ token, user: { id: user._id, email: user.email, role: user.role, name: user.name, is_company_profile_completed } });
   } catch (err) {
     console.error('Google Auth Register error:', err);
     res.status(401).json({ error: 'Invalid Google token' });

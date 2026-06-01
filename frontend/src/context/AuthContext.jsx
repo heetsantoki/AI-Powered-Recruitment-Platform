@@ -31,8 +31,21 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  const updateUser = (updatedFields) => {
+    const userData = localStorage.getItem('user')
+    let parsed = {}
+    if (userData) {
+      parsed = JSON.parse(userData)
+    } else if (user) {
+      parsed = user
+    }
+    const merged = { ...parsed, ...updatedFields }
+    localStorage.setItem('user', JSON.stringify(merged))
+    setUser(merged)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

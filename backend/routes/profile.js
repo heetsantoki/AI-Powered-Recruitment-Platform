@@ -50,6 +50,32 @@ router.get('/', auth, async (req, res) => {
 
     const normalizedUser = user ? { id: user._id, name: user.name, email: user.email } : null;
 
+    // Fetch legimate recruiter company details who shortlisted this candidate
+    const Shortlist = require('../models/Shortlist');
+    const RecruiterProfile = require('../models/RecruiterProfile');
+    
+    const shortlists = await Shortlist.find({ candidate_id: req.user.id }).sort({ created_at: -1 });
+    const shortlistedBy = await Promise.all(shortlists.map(async s => {
+      const rp = await RecruiterProfile.findOne({ user_id: s.recruiter_id });
+      if (!rp) return null;
+      return {
+        shortlist_id: s._id,
+        shortlisted_at: s.created_at,
+        status: s.status,
+        note: s.note,
+        company_logo: rp.company_logo,
+        company_name: rp.company_name,
+        company_website: rp.company_website,
+        company_description: rp.company_description,
+        company_tagline: rp.company_tagline,
+        recruiter_name: rp.recruiter_name,
+        recruiter_designation: rp.recruiter_designation,
+        official_email: rp.official_email,
+        linkedin_company_page: rp.linkedin_company_page,
+        recruiter_linkedin: rp.recruiter_linkedin
+      };
+    }));
+
     res.json({
       user: normalizedUser,
       profile,
@@ -57,7 +83,8 @@ router.get('/', auth, async (req, res) => {
       skills,
       projects,
       education,
-      interview
+      interview,
+      shortlistedBy: shortlistedBy.filter(Boolean)
     });
   } catch (err) {
     console.error(err);
