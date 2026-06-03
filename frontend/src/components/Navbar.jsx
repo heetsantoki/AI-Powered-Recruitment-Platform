@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import api from '../utils/api'
 import ShortlistModal from './ShortlistModal'
 
 export default function Navbar({ showLinks = true }) {
   const { user, logout } = useAuth()
+  const { themeMode, toggleThemeMode } = useTheme()
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -110,7 +112,122 @@ export default function Navbar({ showLinks = true }) {
         </Link>
 
         {showLinks && (
-          <div className="navbar-links">
+          <div className="navbar-links" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Custom Tactile Sliding Theme Toggle */}
+            <div
+              onClick={toggleThemeMode}
+              style={{
+                position: 'relative',
+                width: 66,
+                height: 32,
+                borderRadius: 16,
+                background: themeMode === 'dark' ? '#1E293B' : '#E2E8F0',
+                boxShadow: themeMode === 'dark' 
+                  ? 'inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255,255,255,0.05)'
+                  : 'inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(255,255,255,0.8)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 6px',
+                transition: 'background 0.3s ease, box-shadow 0.3s ease',
+                userSelect: 'none',
+                flexShrink: 0,
+                border: '1px solid ' + (themeMode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+              }}
+              aria-label={`Switch to ${themeMode === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {/* Background Sun Icon (left) */}
+              <div style={{
+                color: '#94A3B8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: themeMode === 'dark' ? 0.35 : 0,
+                transition: 'opacity 0.3s ease',
+                paddingLeft: 4,
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              </div>
+
+              {/* Background Moon Icon (right) */}
+              <div style={{
+                color: '#64748B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: themeMode === 'light' ? 0.4 : 0,
+                transition: 'opacity 0.3s ease',
+                paddingRight: 4,
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                  <path d="M19 3v3M17.5 4.5h3" strokeWidth="2.5" />
+                </svg>
+              </div>
+
+              {/* Animated Sliding Thumb */}
+              <motion.div
+                animate={{ x: themeMode === 'dark' ? 32 : 0 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 380,
+                  damping: 26
+                }}
+                style={{
+                  position: 'absolute',
+                  left: 3,
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  background: themeMode === 'dark'
+                    ? 'linear-gradient(135deg, #3B82F6, #1D4ED8)'
+                    : 'linear-gradient(135deg, #F97316, #EA580C)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: themeMode === 'dark'
+                    ? '0 2px 4px rgba(0, 0, 0, 0.4), 0 0 6px rgba(59, 130, 246, 0.4)'
+                    : '0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(249, 115, 22, 0.4)',
+                  zIndex: 2,
+                }}
+              >
+                {/* Thumb Icon */}
+                {themeMode === 'dark' ? (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" fill="#FFF" />
+                    <path d="M19 3v3M17.5 4.5h3" strokeWidth="2.5" />
+                  </svg>
+                ) : (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5" fill="#FFF" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                  </svg>
+                )}
+              </motion.div>
+            </div>
+
+            <Link to="/ats-checker" className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>📊</span> ATS Checker
+            </Link>
+
             {user ? (
               <>
                 {user.role === 'recruiter' && (

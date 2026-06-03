@@ -411,4 +411,187 @@ Return a JSON object with this exact structure:
   }, 400);
 });
 
+// Local rule-based ATS checker fallback
+function localAtsCheck(text) {
+  const lower = text.toLowerCase();
+  
+  // Find matched skills using SKILL_KEYWORDS defined earlier in the file
+  const matched = [];
+  for (const [skill, keywords] of Object.entries(SKILL_KEYWORDS)) {
+    if (keywords.some(k => lower.includes(k))) {
+      matched.push(skill);
+    }
+  }
+
+  // Determine domain/field
+  let missing = ['CI/CD', 'System Design', 'Unit Testing'];
+  let suggestions = ['Scalability', 'Microservices', 'Agile Methodology'];
+  
+  if (matched.includes('Figma') || lower.includes('design') || lower.includes('ux')) {
+    missing = ['Prototyping', 'Wireframing', 'User Research'];
+    suggestions = ['Visual Design', 'Design Systems', 'User Journey Mapping'];
+  } else if (matched.includes('Python') && (matched.includes('TensorFlow') || lower.includes('data') || lower.includes('learning'))) {
+    missing = ['Machine Learning', 'Data Pipelines', 'SQL'];
+    suggestions = ['Data Modeling', 'Deep Learning', 'Data Visualization'];
+  } else if (matched.includes('React.js') || matched.includes('JavaScript') || matched.includes('CSS/SCSS')) {
+    missing = ['TypeScript', 'Next.js', 'Web Performance'];
+    suggestions = ['State Management', 'Responsive Layouts', 'Cross-Browser Compatibility'];
+  } else if (matched.includes('Node.js') || matched.includes('PostgreSQL') || matched.includes('MongoDB')) {
+    missing = ['Docker', 'Redis', 'API Security'];
+    suggestions = ['Database Optimization', 'Serverless', 'Message Queues'];
+  }
+
+  // Formatting checks
+  const formattingDetails = [];
+  let formattingScore = 100;
+
+  // Check contact info
+  const hasEmail = /[\w.-]+@[\w.-]+\.\w+/.test(lower);
+  const hasPhone = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(lower);
+  
+  if (hasEmail) {
+    formattingDetails.push('Email address detected successfully.');
+  } else {
+    formattingDetails.push('Warning: Email address was not clearly identified.');
+    formattingScore -= 15;
+  }
+
+  if (hasPhone) {
+    formattingDetails.push('Phone number detected successfully.');
+  } else {
+    formattingDetails.push('Warning: Phone number was not clearly identified.');
+    formattingScore -= 15;
+  }
+
+  // Check sections
+  const hasExperience = lower.includes('experience') || lower.includes('work') || lower.includes('employment');
+  const hasEducation = lower.includes('education') || lower.includes('university') || lower.includes('college');
+  
+  if (hasExperience) {
+    formattingDetails.push('Work Experience section detected.');
+  } else {
+    formattingDetails.push('Warning: Work Experience section heading not found.');
+    formattingScore -= 20;
+  }
+
+  if (hasEducation) {
+    formattingDetails.push('Education section detected.');
+  } else {
+    formattingDetails.push('Warning: Education section heading not found.');
+    formattingScore -= 15;
+  }
+
+  // Check text length
+  const wordCount = text.split(/\s+/).length;
+  if (wordCount < 100) {
+    formattingDetails.push('Warning: Resume content is extremely brief. Ensure it contains sufficient detail.');
+    formattingScore -= 20;
+  } else if (wordCount > 1500) {
+    formattingDetails.push('Warning: Resume is very long. Consider condensing it to 1-2 pages.');
+    formattingScore -= 10;
+  } else {
+    formattingDetails.push('Resume length is optimal (1-2 pages equivalent).');
+  }
+
+  // Recommendations
+  const recommendations = [];
+  if (matched.length < 5) {
+    recommendations.push('Add more industry-specific technical skills and tools.');
+  }
+  if (!hasEmail || !hasPhone) {
+    recommendations.push('Ensure your contact information is prominently displayed at the top of the resume.');
+  }
+  if (!hasExperience) {
+    recommendations.push('Structure your work experience with clear headings, job titles, companies, and dates.');
+  }
+  if (formattingScore < 80) {
+    recommendations.push('Use a standard, clean layout without complex multi-column grids or graphics that can confuse ATS parsers.');
+  }
+  recommendations.push('Quantify achievements with metrics and numbers (e.g., "Improved performance by 20%").');
+
+  // Compute final score
+  const skillsScore = Math.min(100, matched.length * 10 + 30);
+  const keywordScore = Math.min(100, matched.length * 8 + 40);
+  const score = Math.round((skillsScore * 0.4) + (formattingScore * 0.3) + (keywordScore * 0.3));
+
+  return {
+    score,
+    skillsMatch: {
+      matched: matched.slice(0, 10),
+      missing: missing,
+    },
+    formatting: {
+      score: formattingScore,
+      details: formattingDetails,
+    },
+    keywords: {
+      optimized: matched.slice(0, 8),
+      suggestions: suggestions,
+    },
+    recommendations: recommendations,
+  };
+}
+
+// POST /api/ai/public/ats-check (PUBLIC - No Auth required)
+router.post('/public/ats-check', async (req, res) => {
+  const { resumeBase64 } = req.body;
+  if (!resumeBase64) {
+    return res.status(400).json({ error: 'Please upload a PDF resume.' });
+  }
+
+  try {
+    const buffer = Buffer.from(resumeBase64, 'base64');
+    const pdfParse = require('pdf-parse');
+    const parsed = await pdfParse(buffer);
+    const text = parsed.text;
+
+    if (!text || text.trim().length < 50) {
+      return res.status(400).json({ error: 'Failed to extract text from the PDF. Please make sure the PDF is not an image scan.' });
+    }
+
+    if (genAI) {
+      try {
+        const prompt = `
+You are a professional ATS (Applicant Tracking System) simulator. Analyze the following resume text and generate a comprehensive ATS compatibility report.
+
+Resume Text:
+"${text}"
+
+Return a JSON object with this exact structure:
+{
+  "score": Number (an overall score between 0 and 100),
+  "skillsMatch": {
+    "matched": ["Array of skills found in the resume"],
+    "missing": ["Array of highly recommended skills for their field that are missing"]
+  },
+  "formatting": {
+    "score": Number (formatting score between 0 and 100),
+    "details": ["Array of formatting findings, e.g. 'Standard fonts used', 'No complex tables detected', 'Missing contact details', etc."]
+  },
+  "keywords": {
+    "optimized": ["Array of keywords optimized in the resume"],
+    "suggestions": ["Array of keyword suggestions to add to boost match rate"]
+  },
+  "recommendations": ["Array of concrete action items to improve the resume"]
+}
+`;
+        const responseText = await generateGeminiContentWithFallback(prompt, { responseMimeType: 'application/json' });
+        const analysis = JSON.parse(responseText);
+        return res.json({ success: true, analysis, is_gemini: true });
+      } catch (err) {
+        console.error('Gemini ATS Check failed, falling back to local engine:', err);
+        const analysis = localAtsCheck(text);
+        return res.json({ success: true, analysis, is_gemini: false, fallback: true });
+      }
+    }
+
+    // Local parser fallback
+    const analysis = localAtsCheck(text);
+    return res.json({ success: true, analysis, is_gemini: false });
+  } catch (err) {
+    console.error('ATS Checker error:', err);
+    return res.status(500).json({ error: 'An error occurred while parsing the resume. Make sure it is a valid PDF.' });
+  }
+});
+
 module.exports = router;

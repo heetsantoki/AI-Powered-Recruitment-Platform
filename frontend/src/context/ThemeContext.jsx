@@ -23,6 +23,27 @@ export const THEMES = {
       '--text-muted': '#5A5C80',
       '--border': 'rgba(108, 99, 255, 0.15)',
       '--border-light': 'rgba(255, 255, 255, 0.06)',
+    },
+    lightColors: {
+      '--primary': '#6C63FF',
+      '--primary-dark': '#5A54D4',
+      '--primary-light': '#8B85FF',
+      '--primary-glow': 'rgba(108, 99, 255, 0.15)',
+      '--accent': '#00B894',
+      '--accent-dark': '#008F72',
+      '--warning': '#F1C40F',
+      '--danger': '#E74C3C',
+      '--success': '#00B894',
+      '--bg': '#F8F9FD',
+      '--bg-secondary': '#FFFFFF',
+      '--bg-card': '#FFFFFF',
+      '--bg-card-hover': '#F0F2FA',
+      '--bg-input': '#F0F2FA',
+      '--text': '#0A0B1A',
+      '--text-secondary': '#5C5E7F',
+      '--text-muted': '#9799B5',
+      '--border': 'rgba(108, 99, 255, 0.15)',
+      '--border-light': 'rgba(108, 99, 255, 0.08)',
     }
   },
   cyberpunk: {
@@ -47,6 +68,27 @@ export const THEMES = {
       '--text-muted': '#596096',
       '--border': 'rgba(0, 240, 255, 0.25)',
       '--border-light': 'rgba(255, 0, 127, 0.12)',
+    },
+    lightColors: {
+      '--primary': '#FF007F',
+      '--primary-dark': '#D00060',
+      '--primary-light': '#FF5EAD',
+      '--primary-glow': 'rgba(255, 0, 127, 0.15)',
+      '--accent': '#00B8C4',
+      '--accent-dark': '#008C99',
+      '--warning': '#FBC531',
+      '--danger': '#E84118',
+      '--success': '#00B8C4',
+      '--bg': '#FCF6F9',
+      '--bg-secondary': '#FFFFFF',
+      '--bg-card': '#FFFFFF',
+      '--bg-card-hover': '#FFEAF5',
+      '--bg-input': '#FFEAF5',
+      '--text': '#12000C',
+      '--text-secondary': '#7A5B6D',
+      '--text-muted': '#B38DA4',
+      '--border': 'rgba(255, 0, 127, 0.18)',
+      '--border-light': 'rgba(0, 240, 255, 0.12)',
     }
   },
   emerald: {
@@ -71,6 +113,27 @@ export const THEMES = {
       '--text-muted': '#56876E',
       '--border': 'rgba(16, 185, 129, 0.2)',
       '--border-light': 'rgba(245, 158, 11, 0.1)',
+    },
+    lightColors: {
+      '--primary': '#10B981',
+      '--primary-dark': '#059669',
+      '--primary-light': '#34D399',
+      '--primary-glow': 'rgba(16, 185, 129, 0.15)',
+      '--accent': '#D97706',
+      '--accent-dark': '#B45309',
+      '--warning': '#F59E0B',
+      '--danger': '#EF4444',
+      '--success': '#10B981',
+      '--bg': '#F4FAF7',
+      '--bg-secondary': '#FFFFFF',
+      '--bg-card': '#FFFFFF',
+      '--bg-card-hover': '#E3F5EC',
+      '--bg-input': '#E3F5EC',
+      '--text': '#03170E',
+      '--text-secondary': '#476C59',
+      '--text-muted': '#7CA891',
+      '--border': 'rgba(16, 185, 129, 0.18)',
+      '--border-light': 'rgba(16, 185, 129, 0.08)',
     }
   },
   sunset: {
@@ -95,6 +158,27 @@ export const THEMES = {
       '--text-muted': '#805982',
       '--border': 'rgba(255, 94, 98, 0.2)',
       '--border-light': 'rgba(255, 159, 67, 0.1)',
+    },
+    lightColors: {
+      '--primary': '#FF5E62',
+      '--primary-dark': '#E03E42',
+      '--primary-light': '#FF8E91',
+      '--primary-glow': 'rgba(255, 94, 98, 0.15)',
+      '--accent': '#EE7E18',
+      '--accent-dark': '#C7630C',
+      '--warning': '#F1C40F',
+      '--danger': '#E74C3C',
+      '--success': '#2ECC71',
+      '--bg': '#FFF9FA',
+      '--bg-secondary': '#FFFFFF',
+      '--bg-card': '#FFFFFF',
+      '--bg-card-hover': '#FFEAEB',
+      '--bg-input': '#FFEAEB',
+      '--text': '#1F050A',
+      '--text-secondary': '#7D555A',
+      '--text-muted': '#B08B8F',
+      '--border': 'rgba(255, 94, 98, 0.18)',
+      '--border-light': 'rgba(255, 94, 98, 0.08)',
     }
   },
   'midnight-gold': {
@@ -119,6 +203,27 @@ export const THEMES = {
       '--text-muted': '#696976',
       '--border': 'rgba(212, 175, 55, 0.25)',
       '--border-light': 'rgba(250, 250, 252, 0.08)',
+    },
+    lightColors: {
+      '--primary': '#B89327',
+      '--primary-dark': '#9A781E',
+      '--primary-light': '#D4AF37',
+      '--primary-glow': 'rgba(184, 147, 39, 0.15)',
+      '--accent': '#3A3A3C',
+      '--accent-dark': '#1C1C1E',
+      '--warning': '#E5A93C',
+      '--danger': '#CF4B3C',
+      '--success': '#2FB07B',
+      '--bg': '#FAF9F5',
+      '--bg-secondary': '#FFFFFF',
+      '--bg-card': '#FFFFFF',
+      '--bg-card-hover': '#F3EFE0',
+      '--bg-input': '#F3EFE0',
+      '--text': '#1A1810',
+      '--text-secondary': '#6B634B',
+      '--text-muted': '#9E957B',
+      '--border': 'rgba(212, 175, 55, 0.25)',
+      '--border-light': 'rgba(212, 175, 55, 0.1)',
     }
   },
   'lavender': {
@@ -143,6 +248,27 @@ export const THEMES = {
       '--text-muted': '#7570A3',
       '--border': 'rgba(139, 92, 246, 0.2)',
       '--border-light': 'rgba(236, 72, 153, 0.1)',
+    },
+    lightColors: {
+      '--primary': '#8B5CF6',
+      '--primary-dark': '#7C3AED',
+      '--primary-light': '#A78BFA',
+      '--primary-glow': 'rgba(139, 92, 246, 0.15)',
+      '--accent': '#DB2777',
+      '--accent-dark': '#BE185D',
+      '--warning': '#FBBF24',
+      '--danger': '#EF4444',
+      '--success': '#10B981',
+      '--bg': '#F9F8FC',
+      '--bg-secondary': '#FFFFFF',
+      '--bg-card': '#FFFFFF',
+      '--bg-card-hover': '#F0EDF9',
+      '--bg-input': '#F0EDF9',
+      '--text': '#0F0C24',
+      '--text-secondary': '#686290',
+      '--text-muted': '#9D97C5',
+      '--border': 'rgba(139, 92, 246, 0.18)',
+      '--border-light': 'rgba(139, 92, 246, 0.08)',
     }
   }
 }
@@ -228,6 +354,7 @@ const ThemeContext = createContext()
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => localStorage.getItem('hireai-theme') || 'default')
+  const [themeMode, setThemeMode] = useState(() => localStorage.getItem('hireai-theme-mode') || 'dark')
   const [radiusMode, setRadiusMode] = useState(() => localStorage.getItem('hireai-radius') || 'rounded')
   const [fontMode, setFontMode] = useState(() => localStorage.getItem('hireai-font') || 'grotesk')
   const [customColors, setCustomColors] = useState(() => {
@@ -268,33 +395,74 @@ export function ThemeProvider({ children }) {
       const a = customColors.accent
       const b = customColors.bg
       
-      colors = {
-        '--primary': p,
-        '--primary-dark': adjustColor(p, -30),
-        '--primary-light': adjustColor(p, 40),
-        '--primary-glow': hexToRgba(p, 0.3),
-        '--accent': a,
-        '--accent-dark': adjustColor(a, -30),
-        '--warning': '#FDCB6E',
-        '--danger': '#E17055',
-        '--success': a,
-        '--bg': b,
-        '--bg-secondary': adjustColor(b, 8),
-        '--bg-card': adjustColor(b, 15),
-        '--bg-card-hover': adjustColor(b, 25),
-        '--bg-input': adjustColor(b, 15),
-        '--text': '#F5F5FC',
-        '--text-secondary': adjustColor(b, 175),
-        '--text-muted': adjustColor(b, 100),
-        '--border': hexToRgba(p, 0.18),
-        '--border-light': hexToRgba(a, 0.08),
+      if (themeMode === 'light') {
+        colors = {
+          '--primary': p,
+          '--primary-dark': adjustColor(p, -20),
+          '--primary-light': adjustColor(p, 20),
+          '--primary-glow': hexToRgba(p, 0.15),
+          '--accent': a,
+          '--accent-dark': adjustColor(a, -20),
+          '--warning': '#F1C40F',
+          '--danger': '#E74C3C',
+          '--success': a,
+          '--bg': '#F8F9FD',
+          '--bg-secondary': '#FFFFFF',
+          '--bg-card': '#FFFFFF',
+          '--bg-card-hover': '#F0F2F9',
+          '--bg-input': '#F0F2F9',
+          '--text': '#0F1020',
+          '--text-secondary': '#5A5C7A',
+          '--text-muted': '#9092B0',
+          '--border': hexToRgba(p, 0.15),
+          '--border-light': hexToRgba(p, 0.08),
+        }
+      } else {
+        colors = {
+          '--primary': p,
+          '--primary-dark': adjustColor(p, -30),
+          '--primary-light': adjustColor(p, 40),
+          '--primary-glow': hexToRgba(p, 0.3),
+          '--accent': a,
+          '--accent-dark': adjustColor(a, -30),
+          '--warning': '#FDCB6E',
+          '--danger': '#E17055',
+          '--success': a,
+          '--bg': b,
+          '--bg-secondary': adjustColor(b, 8),
+          '--bg-card': adjustColor(b, 15),
+          '--bg-card-hover': adjustColor(b, 25),
+          '--bg-input': adjustColor(b, 15),
+          '--text': '#F5F5FC',
+          '--text-secondary': adjustColor(b, 175),
+          '--text-muted': adjustColor(b, 100),
+          '--border': hexToRgba(p, 0.18),
+          '--border-light': hexToRgba(a, 0.08),
+        }
       }
     } else {
-      colors = THEMES[theme]?.colors || THEMES.default.colors
+      const activeTheme = THEMES[theme] || THEMES.default
+      colors = themeMode === 'light' ? (activeTheme.lightColors || activeTheme.colors) : activeTheme.colors
     }
 
     // Apply color custom properties
     Object.entries(colors).forEach(([variable, value]) => {
+      root.style.setProperty(variable, value)
+    })
+
+    // Apply shadow custom properties dynamically for premium light mode support
+    const shadows = themeMode === 'light' ? {
+      '--shadow-sm': '0 2px 8px rgba(0, 0, 0, 0.06)',
+      '--shadow': '0 8px 32px rgba(108, 99, 255, 0.08)',
+      '--shadow-lg': '0 20px 60px rgba(108, 99, 255, 0.12)',
+      '--shadow-glow': '0 0 40px rgba(108, 99, 255, 0.1)',
+    } : {
+      '--shadow-sm': '0 2px 8px rgba(0, 0, 0, 0.3)',
+      '--shadow': '0 8px 32px rgba(0, 0, 0, 0.4)',
+      '--shadow-lg': '0 20px 60px rgba(0, 0, 0, 0.5)',
+      '--shadow-glow': '0 0 40px rgba(108, 99, 255, 0.2)',
+    }
+    Object.entries(shadows).forEach(([variable, value]) => {
       root.style.setProperty(variable, value)
     })
 
@@ -314,16 +482,21 @@ export function ThemeProvider({ children }) {
 
     // Persist to local storage
     localStorage.setItem('hireai-theme', theme)
+    localStorage.setItem('hireai-theme-mode', themeMode)
     localStorage.setItem('hireai-radius', radiusMode)
     localStorage.setItem('hireai-font', fontMode)
     localStorage.setItem('hireai-custom-colors', JSON.stringify(customColors))
 
-  }, [theme, radiusMode, fontMode, customColors])
+  }, [theme, themeMode, radiusMode, fontMode, customColors])
 
   const setTheme = (name) => {
     if (THEMES[name] || name === 'custom') {
       setThemeState(name)
     }
+  }
+
+  const toggleThemeMode = () => {
+    setThemeMode(prev => prev === 'dark' ? 'light' : 'dark')
   }
 
   const updateCustomColor = (key, hex) => {
@@ -336,6 +509,7 @@ export function ThemeProvider({ children }) {
 
   const resetTheme = () => {
     setThemeState('default')
+    setThemeMode('dark')
     setRadiusMode('rounded')
     setFontMode('grotesk')
     setCustomColors({ primary: '#6C63FF', accent: '#00D4AA', bg: '#0A0B1A' })
@@ -345,6 +519,9 @@ export function ThemeProvider({ children }) {
     <ThemeContext.Provider value={{
       theme,
       setTheme,
+      themeMode,
+      setThemeMode,
+      toggleThemeMode,
       radiusMode,
       setRadiusMode,
       fontMode,
