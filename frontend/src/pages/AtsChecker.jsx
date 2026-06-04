@@ -11,6 +11,13 @@ export default function AtsChecker() {
   const [loadingStep, setLoadingStep] = useState(0)
   const [analysis, setAnalysis] = useState(null)
   const [dragActive, setDragActive] = useState(false)
+  const [targetRole, setTargetRole] = useState('full stack developer')
+  const [customRole, setCustomRole] = useState('')
+  const [showAllSkills, setShowAllSkills] = useState(false)
+  const [showAllFormatting, setShowAllFormatting] = useState(false)
+  const [showAllKeywords, setShowAllKeywords] = useState(false)
+  const [showAllRecommendations, setShowAllRecommendations] = useState(false)
+  const [showAllSpelling, setShowAllSpelling] = useState(false)
   const { show: toast } = useToast()
 
   const handleDrag = useCallback((e) => {
@@ -59,6 +66,10 @@ export default function AtsChecker() {
       toast('Please select a resume file first.', 'error')
       return
     }
+    if (targetRole === 'other' && !customRole.trim()) {
+      toast('Please enter your target job role.', 'error')
+      return
+    }
 
     setLoading(true)
     setLoadingStep(0)
@@ -76,7 +87,8 @@ export default function AtsChecker() {
       reader.onload = async () => {
         try {
           const base64 = reader.result.split(',')[1]
-          const res = await api.post('/ai/public/ats-check', { resumeBase64: base64 })
+          const roleToSend = targetRole === 'other' ? customRole : targetRole
+          const res = await api.post('/ai/public/ats-check', { resumeBase64: base64, targetRole: roleToSend })
           
           // Clear standard simulation intervals if done faster
           stepIntervals.forEach(clearTimeout)
@@ -101,20 +113,30 @@ export default function AtsChecker() {
   }
 
   const getScoreColor = (score) => {
-    if (score >= 80) return 'var(--accent)'
-    if (score >= 60) return 'var(--warning)'
-    return 'var(--danger)'
+    if (score >= 90) return 'var(--accent)'       // Excellent (Teal/Emerald)
+    if (score >= 80) return 'var(--primary-light)' // Very Good (Indigo/Violet)
+    if (score >= 70) return '#00d4aa'              // Good (Secondary Accent)
+    if (score >= 60) return 'var(--warning)'       // Average (Yellow/Amber)
+    return 'var(--danger)'                         // Needs Improvement (Red)
   }
 
   const getScoreLabel = (score) => {
-    if (score >= 80) return 'Excellent ATS Compatibility'
-    if (score >= 60) return 'Good Match (Needs Minor Tweaks)'
+    if (score >= 90) return '👑 Excellent Compatibility'
+    if (score >= 80) return '⚡ Very Good Match'
+    if (score >= 70) return '✓ Good Match (Minor Tweaks)'
+    if (score >= 60) return '⚠️ Average Match'
     return 'Needs Critical Improvements'
   }
 
   const handleReset = () => {
     setFile(null)
     setAnalysis(null)
+    setCustomRole('')
+    setShowAllSkills(false)
+    setShowAllFormatting(false)
+    setShowAllKeywords(false)
+    setShowAllRecommendations(false)
+    setShowAllSpelling(false)
   }
 
   return (
@@ -155,6 +177,76 @@ export default function AtsChecker() {
                 </p>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label htmlFor="target-role" style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text)' }}>
+                      🎯 Target Job Role
+                    </label>
+                    <select
+                      id="target-role"
+                      className="form-select"
+                      value={targetRole}
+                      onChange={(e) => setTargetRole(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        borderRadius: 'var(--radius)',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text)',
+                        fontSize: '0.95rem',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="full stack developer">Full Stack Developer</option>
+                      <option value="frontend developer">Frontend Developer</option>
+                      <option value="backend developer">Backend Developer</option>
+                      <option value="data scientist">Data Scientist</option>
+                      <option value="machine learning engineer">Machine Learning Engineer</option>
+                      <option value="devops engineer">DevOps Engineer</option>
+                      <option value="ui/ux designer">UI/UX Designer</option>
+                      <option value="qa engineer">QA Engineer</option>
+                      <option value="android developer">Android Developer</option>
+                      <option value="ios developer">iOS Developer</option>
+                      <option value="data engineer">Data Engineer</option>
+                      <option value="cybersecurity analyst">Cybersecurity Analyst</option>
+                      <option value="cloud engineer">Cloud Engineer</option>
+                      <option value="product manager">Product Manager</option>
+                      <option value="game developer">Game Developer</option>
+                      <option value="other">Other (Specify...)</option>
+                    </select>
+
+                    {targetRole === 'other' && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        style={{ marginTop: 8 }}
+                      >
+                        <label htmlFor="custom-role" style={{ display: 'block', marginBottom: 6, fontWeight: 500, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                          Enter Custom Job Role
+                        </label>
+                        <input
+                          type="text"
+                          id="custom-role"
+                          placeholder="e.g. Blockchain Developer, Prompt Engineer"
+                          value={customRole}
+                          onChange={(e) => setCustomRole(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            borderRadius: 'var(--radius)',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border)',
+                            color: 'var(--text)',
+                            fontSize: '0.9rem',
+                            outline: 'none'
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </div>
+
                   <div
                     onDragEnter={handleDrag}
                     onDragOver={handleDrag}
@@ -291,7 +383,7 @@ export default function AtsChecker() {
 
                   <div style={{ flex: 1, minWidth: 260 }}>
                     <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 100, background: getScoreColor(analysis.score) + '22', color: getScoreColor(analysis.score), fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: 12 }}>
-                      {analysis.score >= 80 ? '👑 Optimal' : analysis.score >= 60 ? '⚡ Average' : '⚠️ Low Match'}
+                      {analysis.score >= 90 ? '👑 Optimal' : analysis.score >= 80 ? '⚡ Very Good' : analysis.score >= 70 ? '✓ Good' : analysis.score >= 60 ? '⚠️ Average' : '⚠️ Low Match'}
                     </div>
                     <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 8 }}>{getScoreLabel(analysis.score)}</h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.6 }}>
@@ -309,113 +401,267 @@ export default function AtsChecker() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
                   
                   {/* Skills Alignment */}
-                  <div className="card">
-                    <h3 style={{ fontSize: '1.15rem', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
-                      🧠 Skills & Competency Alignment
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>Matched Skills ({analysis.skillsMatch.matched.length})</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                          {analysis.skillsMatch.matched.length === 0 ? (
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>None found. Ensure your technical skills are listed as text.</span>
-                          ) : (
-                            analysis.skillsMatch.matched.map(s => (
-                              <span key={s} className="badge badge-accent">{s}</span>
-                            ))
-                          )}
+                  <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.15rem', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        🧠 Skills & Competency Alignment
+                      </h3>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>
+                            Matched Skills ({analysis.skillsMatch.matched.length} / {analysis.skillsMatch.totalRequired || 50})
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {analysis.skillsMatch.matched.length === 0 ? (
+                              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>None found. Ensure your technical skills are listed as text.</span>
+                            ) : (
+                              (showAllSkills ? analysis.skillsMatch.matched : analysis.skillsMatch.matched.slice(0, 8)).map(s => (
+                                <span key={s} className="badge badge-accent">{s}</span>
+                              ))
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      <div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>Missing Field Skills ({analysis.skillsMatch.missing.length})</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                          {analysis.skillsMatch.missing.length === 0 ? (
-                            <span style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>✓ No critical skills missing.</span>
-                          ) : (
-                            analysis.skillsMatch.missing.map(s => (
-                              <span key={s} className="badge badge-warning" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>{s}</span>
-                            ))
-                          )}
+                        <div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>Missing Field Skills ({analysis.skillsMatch.missing.length})</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {analysis.skillsMatch.missing.length === 0 ? (
+                              <span style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>✓ No critical skills missing.</span>
+                            ) : (
+                              (showAllSkills ? analysis.skillsMatch.missing : analysis.skillsMatch.missing.slice(0, 8)).map(s => (
+                                <span key={s} className="badge badge-warning" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>{s}</span>
+                              ))
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+
+                    {(analysis.skillsMatch.matched.length > 8 || analysis.skillsMatch.missing.length > 8) && (
+                      <button 
+                        onClick={() => setShowAllSkills(!showAllSkills)} 
+                        style={{ 
+                          marginTop: 20, 
+                          background: 'none', 
+                          border: 'none', 
+                          color: 'var(--primary-light)', 
+                          fontWeight: 600, 
+                          fontSize: '0.85rem', 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 4,
+                          alignSelf: 'flex-start',
+                          padding: 0
+                        }}
+                      >
+                        {showAllSkills ? 'Show Less ▲' : 'View More ▼'}
+                      </button>
+                    )}
                   </div>
 
                   {/* Formatting Analysis */}
-                  <div className="card">
-                    <h3 style={{ fontSize: '1.15rem', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>📄 Layout & Format Check</span>
-                      <span style={{ fontSize: '1rem', color: getScoreColor(analysis.formatting.score), fontWeight: 700 }}>
-                        {analysis.formatting.score}/100
-                      </span>
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {analysis.formatting.details.map((detail, index) => {
-                        const isWarning = detail.toLowerCase().includes('warning') || detail.toLowerCase().includes('missing');
-                        return (
-                          <div key={index} style={{ display: 'flex', gap: 10, fontSize: '0.88rem', alignItems: 'flex-start', color: isWarning ? 'var(--text-secondary)' : 'var(--text)' }}>
-                            <span style={{ color: isWarning ? 'var(--danger)' : 'var(--accent)', fontWeight: 'bold' }}>
-                              {isWarning ? '✕' : '✓'}
-                            </span>
-                            <span>{detail}</span>
-                          </div>
-                        )
-                      })}
+                  <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.15rem', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>📄 Layout & Format Check</span>
+                        <span style={{ fontSize: '1rem', color: getScoreColor(analysis.formatting.score), fontWeight: 700 }}>
+                          {analysis.formatting.score}/100
+                        </span>
+                      </h3>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {(showAllFormatting ? analysis.formatting.details : analysis.formatting.details.slice(0, 4)).map((detail, index) => {
+                          const isWarning = detail.toLowerCase().includes('warning') || detail.toLowerCase().includes('missing');
+                          return (
+                            <div key={index} style={{ display: 'flex', gap: 10, fontSize: '0.88rem', alignItems: 'flex-start', color: isWarning ? 'var(--text-secondary)' : 'var(--text)' }}>
+                              <span style={{ color: isWarning ? 'var(--danger)' : 'var(--accent)', fontWeight: 'bold' }}>
+                                {isWarning ? '✕' : '✓'}
+                              </span>
+                              <span>{detail}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
+
+                    {analysis.formatting.details.length > 4 && (
+                      <button 
+                        onClick={() => setShowAllFormatting(!showAllFormatting)} 
+                        style={{ 
+                          marginTop: 20, 
+                          background: 'none', 
+                          border: 'none', 
+                          color: 'var(--primary-light)', 
+                          fontWeight: 600, 
+                          fontSize: '0.85rem', 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 4,
+                          alignSelf: 'flex-start',
+                          padding: 0
+                        }}
+                      >
+                        {showAllFormatting ? 'Show Less ▲' : 'View More ▼'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Spelling & Grammar Analysis */}
+                  <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.15rem', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>✍️ Spelling & Grammar Analysis</span>
+                        <span style={{ fontSize: '1rem', color: getScoreColor(analysis.spellingGrammar?.score ?? 100), fontWeight: 700 }}>
+                          {(analysis.spellingGrammar?.score ?? 100)}/100
+                        </span>
+                      </h3>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {!analysis.spellingGrammar?.issues || analysis.spellingGrammar.issues.length === 0 ? (
+                          <div style={{ display: 'flex', gap: 10, fontSize: '0.88rem', alignItems: 'center', color: 'var(--accent)' }}>
+                            <span style={{ fontWeight: 'bold' }}>✓</span>
+                            <span>No spelling or grammar errors detected. Perfect!</span>
+                          </div>
+                        ) : (
+                          (showAllSpelling ? analysis.spellingGrammar.issues : analysis.spellingGrammar.issues.slice(0, 3)).map((issue, index) => (
+                            <div key={index} style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: 10, fontSize: '0.88rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 4 }}>
+                                <span style={{ fontWeight: 600, color: 'var(--danger)', textDecoration: 'line-through' }}>{issue.error}</span>
+                                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>→ {issue.correction}</span>
+                                <span className="badge" style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--border-light)', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{issue.type?.replace('_', ' ')}</span>
+                              </div>
+                              <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.82rem' }}>
+                                "{issue.context}"
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {analysis.spellingGrammar?.issues && analysis.spellingGrammar.issues.length > 3 && (
+                      <button 
+                        onClick={() => setShowAllSpelling(!showAllSpelling)} 
+                        style={{ 
+                          marginTop: 20, 
+                          background: 'none', 
+                          border: 'none', 
+                          color: 'var(--primary-light)', 
+                          fontWeight: 600, 
+                          fontSize: '0.85rem', 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 4,
+                          alignSelf: 'flex-start',
+                          padding: 0
+                        }}
+                      >
+                        {showAllSpelling ? 'Show Less ▲' : 'View More ▼'}
+                      </button>
+                    )}
                   </div>
 
                   {/* Keywords Optimization */}
-                  <div className="card">
-                    <h3 style={{ fontSize: '1.15rem', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
-                      🔑 Keyword Density & Optimization
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>Optimized Keywords</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {analysis.keywords.optimized.length === 0 ? (
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>None matched. Include keywords that match job descriptions.</span>
-                          ) : (
-                            analysis.keywords.optimized.map(k => (
-                              <span key={k} style={{ fontSize: '0.76rem', padding: '3px 8px', borderRadius: 4, background: 'var(--border-light)', color: 'var(--text)', border: '1px solid var(--border)' }}>{k}</span>
-                            ))
-                          )}
+                  <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.15rem', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        🔑 Keyword Density & Optimization
+                      </h3>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>Optimized Keywords</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {analysis.keywords.optimized.length === 0 ? (
+                              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>None matched. Include keywords that match job descriptions.</span>
+                            ) : (
+                              (showAllKeywords ? analysis.keywords.optimized : analysis.keywords.optimized.slice(0, 8)).map(k => (
+                                <span key={k} style={{ fontSize: '0.76rem', padding: '3px 8px', borderRadius: 4, background: 'var(--border-light)', color: 'var(--text)', border: '1px solid var(--border)' }}>{k}</span>
+                              ))
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      <div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>Highly Suggested Keywords</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {analysis.keywords.suggestions.length === 0 ? (
-                            <span style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>✓ Keywords fully optimized.</span>
-                          ) : (
-                            analysis.keywords.suggestions.map(k => (
-                              <span key={k} style={{ fontSize: '0.76rem', padding: '3px 8px', borderRadius: 4, background: 'rgba(108,99,255,0.08)', color: 'var(--primary-light)', border: '1px solid rgba(108,99,255,0.15)', cursor: 'default' }}>{k}</span>
-                            ))
-                          )}
+                        <div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5, marginBottom: 8 }}>Highly Suggested Keywords</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {analysis.keywords.suggestions.length === 0 ? (
+                              <span style={{ fontSize: '0.85rem', color: 'var(--accent)' }}>✓ Keywords fully optimized.</span>
+                            ) : (
+                              (showAllKeywords ? analysis.keywords.suggestions : analysis.keywords.suggestions.slice(0, 8)).map(k => (
+                                <span key={k} style={{ fontSize: '0.76rem', padding: '3px 8px', borderRadius: 4, background: 'rgba(108,99,255,0.08)', color: 'var(--primary-light)', border: '1px solid rgba(108,99,255,0.15)', cursor: 'default' }}>{k}</span>
+                              ))
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
+
+                    {(analysis.keywords.optimized.length > 8 || analysis.keywords.suggestions.length > 8) && (
+                      <button 
+                        onClick={() => setShowAllKeywords(!showAllKeywords)} 
+                        style={{ 
+                          marginTop: 20, 
+                          background: 'none', 
+                          border: 'none', 
+                          color: 'var(--primary-light)', 
+                          fontWeight: 600, 
+                          fontSize: '0.85rem', 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 4,
+                          alignSelf: 'flex-start',
+                          padding: 0
+                        }}
+                      >
+                        {showAllKeywords ? 'Show Less ▲' : 'View More ▼'}
+                      </button>
+                    )}
                   </div>
 
                   {/* Concrete Recommendations */}
-                  <div className="card">
-                    <h3 style={{ fontSize: '1.15rem', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
-                      🛠️ Recommended Action Checklist
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {analysis.recommendations.map((rec, index) => (
-                        <div key={index} style={{ display: 'flex', gap: 10, fontSize: '0.88rem', alignItems: 'flex-start' }}>
-                          <span style={{ color: 'var(--primary-light)', fontWeight: 600 }}>0{index + 1}.</span>
-                          <span style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>{rec}</span>
-                        </div>
-                      ))}
+                  <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.15rem', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        🛠️ Recommended Action Checklist
+                      </h3>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {(showAllRecommendations ? analysis.recommendations : analysis.recommendations.slice(0, 3)).map((rec, index) => (
+                          <div key={index} style={{ display: 'flex', gap: 10, fontSize: '0.88rem', alignItems: 'flex-start' }}>
+                            <span style={{ color: 'var(--primary-light)', fontWeight: 600 }}>0{index + 1}.</span>
+                            <span style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>{rec}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
+
+                    {analysis.recommendations.length > 3 && (
+                      <button 
+                        onClick={() => setShowAllRecommendations(!showAllRecommendations)} 
+                        style={{ 
+                          marginTop: 20, 
+                          background: 'none', 
+                          border: 'none', 
+                          color: 'var(--primary-light)', 
+                          fontWeight: 600, 
+                          fontSize: '0.85rem', 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 4,
+                          alignSelf: 'flex-start',
+                          padding: 0
+                        }}
+                      >
+                        {showAllRecommendations ? 'Show Less ▲' : 'View More ▼'}
+                      </button>
+                    )}
                   </div>
 
                 </div>

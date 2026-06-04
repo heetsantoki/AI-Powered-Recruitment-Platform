@@ -16,7 +16,6 @@ export default function ThemeCustomizer() {
   } = useTheme()
 
   const [isOpen, setIsOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [showDiy, setShowDiy] = useState(false)
 
   // Listen for Escape key to close drawer
@@ -28,41 +27,7 @@ export default function ThemeCustomizer() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  const handleCopyCSS = () => {
-    const root = document.documentElement
-    let colors = {}
-    
-    if (theme === 'custom') {
-      // Get computed styles from the DOM since they are dynamically set on root
-      const variables = [
-        '--primary', '--primary-dark', '--primary-light', '--primary-glow',
-        '--accent', '--accent-dark', '--warning', '--danger', '--success',
-        '--bg', '--bg-secondary', '--bg-card', '--bg-card-hover', '--bg-input',
-        '--text', '--text-secondary', '--text-muted', '--border', '--border-light'
-      ]
-      variables.forEach(v => {
-        colors[v] = root.style.getPropertyValue(v).trim()
-      })
-    } else {
-      colors = THEMES[theme]?.colors || THEMES.default.colors
-    }
 
-    const radii = RADII_PRESETS[radiusMode] || RADII_PRESETS.rounded
-    const fonts = FONTS_PRESETS[fontMode] || FONTS_PRESETS.grotesk
-
-    const cssText = `:root {
-  /* Theme: ${theme === 'custom' ? 'Custom DIY Theme' : THEMES[theme]?.name} */
-${Object.entries(colors).map(([k, v]) => `  ${k}: ${v};`).join('\n')}
-
-  /* Layout Customizer */
-${Object.entries(radii).map(([k, v]) => `  ${k}: ${v};`).join('\n')}
-${Object.entries(fonts).map(([k, v]) => k.startsWith('--') ? `  ${k}: ${v};` : '').filter(Boolean).join('\n')}
-}`
-
-    navigator.clipboard.writeText(cssText)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   // Pre-calculate preset representations for cards
   const presetsList = Object.entries(THEMES).map(([key, value]) => ({
@@ -516,53 +481,7 @@ ${Object.entries(fonts).map(([k, v]) => k.startsWith('--') ? `  ${k}: ${v};` : '
                   </div>
                 </div>
 
-                {/* Section: Copy CSS Stylesheet */}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>CSS Export</h3>
-                    <motion.button
-                      onClick={handleCopyCSS}
-                      className="btn btn-secondary btn-sm"
-                      style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {copied ? (
-                        <>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          <span style={{ color: 'var(--accent)' }}>Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                          <span>Copy CSS</span>
-                        </>
-                      )}
-                    </motion.button>
-                  </div>
-                  
-                  <div style={{
-                    background: '#04040A',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    fontFamily: 'monospace',
-                    fontSize: '0.7rem',
-                    color: 'var(--text-secondary)',
-                    maxHeight: '120px',
-                    overflowY: 'auto',
-                    border: '1px solid var(--border-light)',
-                    lineHeight: '1.4'
-                  }}>
-                    <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{`:root {
-  /* Theme variables active */
-  --primary: ${document.documentElement.style.getPropertyValue('--primary') || '#6C63FF'};
-  --accent: ${document.documentElement.style.getPropertyValue('--accent') || '#00D4AA'};
-  --bg: ${document.documentElement.style.getPropertyValue('--bg') || '#0A0B1A'};
-  --radius: ${document.documentElement.style.getPropertyValue('--radius') || '12px'};
-  --font: ${document.documentElement.style.getPropertyValue('--font') || "'Inter', sans-serif"};
-}`}</pre>
-                  </div>
-                </div>
+
 
               </div>
 
