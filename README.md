@@ -78,14 +78,3 @@ npm run dev          # Starts the dev server on http://localhost:5173
 Open **http://localhost:5173** in your browser to view the application.
 
 ---
-
-## 🔑 Demo Login Credentials
-
-You can use the following pre-seeded accounts to test the application immediately:
-
-| Role | Email | Password |
-|------|-------|----------|
-| **Candidate** | `hire-me@anshumat.org` | `HireMe@2025!` |
-| **Recruiter** | `recruiter@demo.com` | `HireMe@2025!` |
-
-> *Note: The demo candidate has a fully pre-seeded profile with experiences, skills, projects, and education.*
