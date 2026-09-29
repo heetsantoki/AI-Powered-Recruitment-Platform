@@ -19,7 +19,7 @@ A modern recruitment platform where candidates build smart, AI-assisted profiles
 
 ### Backend
 - **Node.js + Express.js**: Fast and scalable RESTful API.
-- **SQLite (`better-sqlite3`)**: Zero-config, file-based database for easy setup.
+- MongoDB Atlas + Mongoose: Cloud-hosted NoSQL database used for storing application data, with Mongoose providing schema modeling and database interaction.
 - **JWT + bcryptjs**: Secure authentication and password hashing.
 - **Custom Rule-based AI Engine**: NLP parsing without external API dependencies.
 
