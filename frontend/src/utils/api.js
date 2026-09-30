@@ -1,9 +1,6 @@
 import axios from 'axios'
 
-// Always use same-origin /api path. 
-// Dev: Vite proxy forwards to localhost:5000
-// Production: Vercel rewrites forward to Railway
-const API_URL = '/api';
+const API_URL = `${import.meta.env.VITE_API_URL}/api`;
 
 const api = axios.create({
   baseURL: API_URL,
